@@ -1,10 +1,10 @@
 #include"hw_config.h"
 
 static spi_t spi = {
-    .hw_inst = spi1,
-    .miso_gpio=12,
-    .mosi_gpio=11,
-    .sck_gpio=10,
+    .hw_inst = spi0,
+    .miso_gpio=16,
+    .mosi_gpio=19,
+    .sck_gpio=18,
     .baud_rate = 1000 * 1000, //  1000000 Hz 
     //.baud_rate = 125 * 1000 * 1000 / 8,  // 15625000 Hz
     //.baud_rate = 125 * 1000 * 1000 / 6, // 20833333 Hz
@@ -14,7 +14,7 @@ static spi_t spi = {
 
 static sd_spi_if_t spi_if = {
     .spi = &spi,
-    .ss_gpio = 13,
+    .ss_gpio = 17,
 };
 
 static sd_card_t sd_card = {

@@ -41,7 +41,7 @@ add_compile_definitions(USE_PRINTF USE_DBG_PRINTF)
 
 
 # Add executable. Default name is the project name, version 0.1
-add_executable(main main.c hw_config.c)
+add_executable(main main.c hw_config.c read_write_microsd.c)
 
 pico_set_program_name(main "main")
 pico_set_program_version(main "0.1")
