@@ -1,8 +1,11 @@
 #include <stdio.h>
 #include <string.h>
-#include "pico/stdlib.h"
+#include "microsd.h"
 #include "ff.h"
 #include "f_util.h"
+#include "hardware_config.h"
+#include "ps1_card.h"
+
 
 FATFS fs;
 
@@ -12,7 +15,7 @@ bool write_test_file(void){
     UINT written;
     
     const char *text = 
-        "Test test test";
+        "TEST TEXT";
     
     fr = f_open(&file, "test.txt", FA_CREATE_ALWAYS | FA_WRITE);
     if(FR_OK != fr){
@@ -78,11 +81,9 @@ bool read_test_file(void){
     return true;
 }
 
-void test_write_read_microsd(void)
+void test_microsd(void)
 {
-    stdio_init_all();
-    
-    printf("PS memory card - micro sd test\n");
+    printf("PS memory card - micro sd input/output test\n");
     FRESULT fr = f_mount(&fs, "0:", 1);
     if(FR_OK != fr){
         printf("f_mount failed: %s %d\n", FRESULT_str(fr), fr);
@@ -102,4 +103,71 @@ void test_write_read_microsd(void)
         printf("Read test OK\n");
     }
     f_unmount("0:");
+}
+
+bool test_backup_ps1_card_to_microsd(const char *path){
+    FIL file;
+    FRESULT fr;
+    UINT written;
+    uint8_t frame[PS1_FRAME_SIZE];
+
+    printf("Mounting microSD...\n");
+    fr = f_mount(&fs, "0:", 1);
+    if (FR_OK != fr){
+        printf("f_mount failed: %d\n", fr);
+        return false;
+    }
+
+    printf("microSD mounted OK\n");
+    
+    printf("Creating image file: %s\n", path);
+    
+    fr = f_open(&file, path, FA_CREATE_ALWAYS | FA_WRITE);
+    if (FR_OK != fr){
+        printf("f_open failed: %d\n", fr);
+        return false;
+    }
+
+    for (uint16_t frame_no = 0; frame_no < PS1_FRAME_COUNT; frame_no++){
+        bool ok = ps1_mc_read_frame(frame_no, frame);
+
+        if(!ok){
+            printf("PS1 read failed at frame %u\n", frame_no);
+            f_close(&file);
+            f_unmount("0:");
+            return false;
+        }
+
+        fr = f_write(&file, frame, PS1_FRAME_SIZE, &written);
+
+        if(FR_OK != fr){
+            printf("f_write failed at %u, fr=%d, written=%u\n", frame_no, fr, written);
+            f_close(&file);
+            f_unmount("0:");
+            return false;
+        }
+
+        if((frame_no % 32) == 0){
+            printf("Backed up progress %u / %u\n", frame_no, PS1_FRAME_COUNT);
+        }
+    }
+    fr = f_sync(&file);
+    if(FR_OK != fr){
+        printf("f_sync failed: %d\n", fr);
+        f_close(&file);
+        f_unmount("0:");
+        return false;
+    }
+
+    fr = f_close(&file);
+    if(FR_OK != fr){
+        printf("f_close failed: %d\n", fr);
+        f_unmount("0:");
+        return false;
+    }
+    printf("Backup complete\n");
+    printf("Expected image size: %u bytes\n", PS1_CARD_SIZE);
+    f_unmount("0:");
+
+    return true;
 }
