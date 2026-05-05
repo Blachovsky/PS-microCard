@@ -69,7 +69,6 @@ bool ps1_wait_ack(uint32_t timeout_us){
     return false;
 }
 
-
 uint8_t ps1_transfer_byte_ack(uint8_t out, const char *label) {
     uint8_t in = ps1_transfer_byte(out);
 
@@ -81,7 +80,7 @@ uint8_t ps1_transfer_byte_ack(uint8_t out, const char *label) {
     return in;
 }
 
-uint8_t ps1_frame_checksum(uint16_t frame_addr, const uint8_t data[128]){
+uint8_t ps1_frame_checksum(uint16_t frame_addr, const uint8_t data[PS1_FRAME_SIZE]){
     uint8_t c = 0;
     uint8_t addr_lsb = frame_addr & 0xFF;
     uint8_t addr_msb = (frame_addr >> 8) & 0xFF;
@@ -96,7 +95,7 @@ uint8_t ps1_frame_checksum(uint16_t frame_addr, const uint8_t data[128]){
     return c;
 }
 
-bool ps1_mc_read_frame(uint16_t frame_addr, uint8_t out[128]){
+bool ps1_mc_read_frame(uint16_t frame_addr, uint8_t out[PS1_FRAME_SIZE]){
     uint8_t addr_lsb = frame_addr & 0xFF;
     uint8_t addr_msb = (frame_addr >> 8) & 0xFF;
 
@@ -179,7 +178,124 @@ bool ps1_mc_read_frame(uint16_t frame_addr, uint8_t out[128]){
 
 }
 
-void dump_frame_hex(const uint8_t data[128]) {
+bool ps1_mc_read_frame_retry(uint16_t frame_no, uint8_t out[PS1_FRAME_SIZE]){
+    const int max_attemps = 5;
+
+    for (int attempt = 1; attempt <= max_attemps; attempt++){
+        if (ps1_mc_read_frame(frame_no, out)){
+            if(attempt > 1){
+                printf("Frame %u read OK after try %d\n", frame_no, attempt);
+            }
+            
+            return true;
+        }
+
+        printf("Frame %u read attempt %d failed\n", frame_no, attempt);
+        sleep_us(200);
+    }
+    return false;
+}
+
+bool ps1_mc_write_frame(uint16_t frame_addr, uint8_t data[PS1_FRAME_SIZE]){
+    
+    uint8_t addr_lsb = frame_addr & 0xFF;
+    uint8_t addr_msb = (frame_addr >> 8) & 0xFF;
+    uint8_t checksum = ps1_frame_checksum(frame_addr, data);
+
+    uint8_t rx;
+    uint8_t status1;
+    uint8_t status2;
+
+    gpio_put(PS1_CS_PIN, 0);
+    sleep_us(20);
+
+    rx = ps1_transfer_byte_ack(0x81, "0x81 access");
+    printf("RX after 0x81: 0x%02X\n", rx);
+
+    rx = ps1_transfer_byte_ack(0x57, "0x57 write");
+    printf("RX after 0x52: 0x%02X\n", rx);
+
+    //Headers 
+    rx = ps1_transfer_byte_ack(0x00, "header 0");
+    printf("RX header 0: 0x%02X\n", rx);
+
+    rx = ps1_transfer_byte_ack(0x00, "header 1");
+    printf("RX header 1: 0x%02X\n", rx);
+
+    //MSB then LSB
+    rx = ps1_transfer_byte_ack(addr_msb, "addr MSB");
+    printf("RX addr MSB phase: 0x%02X\n", rx);
+
+    rx = ps1_transfer_byte_ack(addr_lsb, "addr LSB");
+    printf("RX addr LSB phase: 0x%02X\n", rx);
+    
+    for(int i = 0; i < 128; i++){
+        rx = ps1_transfer_byte_ack(data[i], "data");
+    }
+    rx = ps1_transfer_byte_ack(checksum, "checksum");
+
+    status1 = ps1_transfer_byte_ack(0x00, "status 1");
+    status2 = ps1_transfer_byte(0x00);
+
+    gpio_put(PS1_CS_PIN, 1);
+    gpio_put(PS1_CMD_PIN, 1);
+    gpio_put(PS1_SCK_PIN, 1);
+
+    printf("Write frame %u status: 0x%02X 0x%02X\n",
+        frame_addr,
+        status1,
+        status2);
+
+    return true;
+}
+
+bool ps1_mc_write_frame_retry(uint16_t frame_addr, uint8_t data[PS1_FRAME_SIZE]) {
+    const int max_attempts = 5;
+
+    for (int attempt = 1; attempt <= max_attempts; attempt++) {
+        if (ps1_mc_write_frame(frame_addr, data)) {
+            if (attempt > 1) {
+                printf("Frame %u write OK after retry %d\n",
+                       frame_addr,
+                       attempt);
+            }
+
+            return true;
+        }
+
+        printf("Frame %u write attempt %d failed\n",
+               frame_addr,
+               attempt);
+
+        sleep_ms(20);
+    }
+
+    return false;
+}
+
+bool verify_written_frame(uint16_t frame_addr, const uint8_t expected[PS1_FRAME_SIZE]) {
+    uint8_t actual[128];
+
+    if (!ps1_mc_read_frame_retry(frame_addr, actual)) {
+        printf("Verify read failed at frame %u\n", frame_addr);
+        return false;
+    }
+
+    for (int i = 0; i < 128; i++) {
+        if (actual[i] != expected[i]) {
+            printf("Verify mismatch at frame %u byte %d: expected 0x%02X, got 0x%02X\n",
+                   frame_addr,
+                   i,
+                   expected[i],
+                   actual[i]);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void dump_frame_hex(const uint8_t data[PS1_FRAME_SIZE]) {
     for (int i = 0; i < 128; i++) {
         if ((i % 16) == 0) {
             printf("\n%04X: ", i);

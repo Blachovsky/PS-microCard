@@ -28,7 +28,8 @@
 #define PS1_FRAME_COUNT 1024
 #define PS1_CARD_SIZE (PS1_FRAME_COUNT*PS1_FRAME_SIZE)
 
-#define BACKUP_PATH "0:/CARD000.MCR"
+#define BACKUP_PATH "0:/CARD001.MCR"
+#define RESTORE_PATH "0:/CARD000_restored.MCR"
 
 #
 // =====================

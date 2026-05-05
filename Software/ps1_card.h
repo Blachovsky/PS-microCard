@@ -23,6 +23,18 @@ uint8_t ps1_frame_checksum(uint16_t frame_addr, const uint8_t data[PS1_FRAME_SIZ
 // Read a single frame from the PS1 memory card
 bool ps1_mc_read_frame(uint16_t frame_addr, uint8_t out[PS1_FRAME_SIZE]);
 
+// 5 attemps to read a single frame
+bool ps1_mc_read_frame_retry(uint16_t frame_no, uint8_t out[PS1_FRAME_SIZE]); 
+
+// Write a single frame to the PS1 memory card
+bool ps1_mc_write_frame(uint16_t frame_addr, uint8_t data[PS1_FRAME_SIZE]);
+
+// 5 attemps to write a single frame
+bool ps1_mc_write_frame_retry(uint16_t frame_no, uint8_t data[PS1_FRAME_SIZE]);
+
+// Verify written frame
+bool verify_written_frame(uint16_t frame_addr, const uint8_t expected[PS1_FRAME_SIZE]);
+
 // Print frame data in HEX format
 void dump_frame_hex(const uint8_t data[PS1_FRAME_SIZE]);
 
