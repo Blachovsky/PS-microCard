@@ -46,7 +46,9 @@ add_executable(
     main.c 
     hardware_config.c 
     microSD.c
-    ps1_card.c)
+    ps1_card_emulator.c
+    ps1_card_bus.c
+    )
 
 pico_set_program_name(main "main")
 pico_set_program_version(main "0.1")

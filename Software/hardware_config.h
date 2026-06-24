@@ -2,6 +2,7 @@
 #define HARDWARE_CONFIG_H
 
 #include <stddef.h>
+
 #include "sd_card.h"
 
 // =====================
@@ -26,16 +27,20 @@
 
 #define PS1_FRAME_SIZE  128
 #define PS1_FRAME_COUNT 1024
-#define PS1_CARD_SIZE (PS1_FRAME_COUNT*PS1_FRAME_SIZE)
+#define PS1_CARD_SIZE   (PS1_FRAME_COUNT * PS1_FRAME_SIZE)
 
-#define BACKUP_PATH "0:/CARD001.MCR"
-#define RESTORE_PATH "0:/CARD000_restored.MCR"
+#define PS1_ACK_PULSE_US     3
+#define PS1_SAMPLE_DELAY_US  2
 
-#
+// =====================
+// Functions required by PS1 pins
+// =====================
+void ps1emu_gpio_init(void);
+
 // =====================
 // Functions required by the SD library
 // =====================
 size_t sd_get_num(void);
 sd_card_t *sd_get_by_num(size_t num);
 
-#endif 
+#endif // HARDWARE_CONFIG_H
