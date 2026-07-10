@@ -44,7 +44,9 @@ add_compile_definitions(USE_PRINTF USE_DBG_PRINTF)
 add_executable(
     main 
     main.c 
-    hardware_config.c 
+    hardware_config.c
+    menu.c
+    oled.c 
     microSD.c
     ps1_card_emulator.c
     ps1_card_bus.c
@@ -61,6 +63,8 @@ pico_enable_stdio_usb(main 0)
 target_link_libraries(
     main
     pico_stdlib
+    pico_multicore
+    hardware_spi
     no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
     )
 

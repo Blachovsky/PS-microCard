@@ -51,7 +51,11 @@ static sd_spi_if_t spi_if = {
 static sd_card_t sd_card = {
     .type = SD_IF_SPI,
     .spi_if_p = &spi_if,
-    .use_card_detect = false,
+    .use_card_detect = true,
+    .card_detect_gpio = SD_DETECT_PIN,
+    .card_detected_true = SD_DETECT_PRESENT_LEVEL,
+    .card_detect_use_pull = true,
+    .card_detect_pull_hi = true,
 };
 
 size_t sd_get_num(void) {
