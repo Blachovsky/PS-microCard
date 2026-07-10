@@ -1,0 +1,18 @@
+(kicad_sch
+	(version 20250114)
+	(generator "eeschema")
+	(generator_version "9.0")
+	(uuid "29493766-bdc1-49ff-baed-532557be2583")
+	(paper "A3")
+	(title_block
+		(title "PS-microCard")
+		(date "2026-07-10")
+	)
+	(lib_symbols)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+	(embedded_fonts no)
+)
