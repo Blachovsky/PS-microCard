@@ -1,0 +1,41 @@
+# Default: normalize text files in repo, keep native line endings in worktree.
+* text=auto
+
+# Source and project files: always LF.
+*.c       text eol=lf
+*.h       text eol=lf
+*.cpp     text eol=lf
+*.hpp     text eol=lf
+*.S       text eol=lf
+*.s       text eol=lf
+*.pio     text eol=lf
+*.cmake   text eol=lf
+CMakeLists.txt text eol=lf
+
+# Config and docs.
+*.json    text eol=lf
+*.md      text eol=lf
+*.txt     text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+.gitignore text eol=lf
+
+# Windows scripts, if added later.
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+*.ps1     text eol=crlf
+
+# Firmware/build artifacts and binaries.
+*.elf     binary
+*.uf2     binary
+*.bin     binary
+*.hex     binary
+*.obj     binary
+*.o       binary
+*.a       binary
+*.lib     binary
+*.exe     binary
+*.dll     binary
+
+# Optional: treat vendored SDIO library as vendored on GitHub stats.
+lib/SDIO_RPI2/** linguist-vendored
