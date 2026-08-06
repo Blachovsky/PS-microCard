@@ -74,6 +74,12 @@ set(APP_WARNING_OPTIONS
     -Wstrict-prototypes
     -Wmissing-prototypes
     -Wold-style-definition
+    -Wconversion
+    -Wsign-conversion
+    -Wcast-align
+    -Wswitch-enum
+    -Wvla
+    #-Werror
 )
 
 # Add executable. Default name is the project name, version 0.1
