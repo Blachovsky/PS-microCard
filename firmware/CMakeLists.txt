@@ -59,6 +59,7 @@ set(APP_SOURCES
     hardware_config.c
     menu.c
     oled.c
+    oled_font.c
     micro_sd.c
     ps1_card_emulator.c
     ps1_card_bus.c
