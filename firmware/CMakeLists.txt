@@ -54,19 +54,21 @@ add_compile_definitions(USE_PRINTF USE_DBG_PRINTF)
 # add_compile_definitions(USE_PRINTF)
 
 set(APP_SOURCES
-    app_log.c
-    main.c
-    hardware_config.c
-    menu.c
-    menu_controller.c
-    menu_display.c
-    menu_input.c
-    menu_storage.c
-    oled.c
-    oled_font.c
-    micro_sd.c
-    ps1_card_emulator.c
-    ps1_card_bus.c
+    app/app_log.c
+    app/main.c
+    board/hardware_config.c
+    menu/menu.c
+    menu/menu_controller.c
+    menu/menu_display.c
+    menu/menu_input.c
+    menu/menu_storage.c
+    storage/micro_sd.c
+    storage/micro_sd_image.c
+    storage/micro_sd_worker.c
+    ps1/ps1_card_emulator.c
+    ps1/ps1_card_bus.c
+    drivers/oled.c
+    drivers/oled_font.c
 )
 
 set(APP_WARNING_OPTIONS

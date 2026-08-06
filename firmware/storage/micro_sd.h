@@ -1,7 +1,7 @@
 #ifndef MICRO_SD_H
 #define MICRO_SD_H
 
-#include "hardware_config.h"
+#include "board/hardware_config.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -42,6 +42,7 @@ typedef enum {
     MICRO_SD_ERROR_FRAME_FETCH_FAILED,
 } micro_sd_result_t;
 
+/* Result reporting and card lifecycle. */
 const char *micro_sd_result_string(micro_sd_result_t result);
 
 void micro_sd_card_detect_init(void);
@@ -53,6 +54,7 @@ void micro_sd_handle_card_unavailable(void);
 micro_sd_result_t micro_sd_load_or_create_initial_image(const char *path);
 micro_sd_result_t micro_sd_check_active_image_accessible(void);
 
+/* Active image state. */
 const char *micro_sd_active_image_path(void);
 const char *micro_sd_active_image_name(void);
 bool micro_sd_is_active_image(const char *image_name);
@@ -65,6 +67,7 @@ void micro_sd_save_worker_init(const char *path);
 micro_sd_result_t micro_sd_save_worker_poll(void);
 micro_sd_result_t micro_sd_save_worker_flush(void);
 
+/* Image catalog and PS1 save metadata. */
 micro_sd_result_t micro_sd_create_blank_image_auto(
         char out_name[MICRO_SD_IMAGE_NAME_MAX]);
 size_t micro_sd_list_images(micro_sd_image_entry_t *entries, size_t max_entries);

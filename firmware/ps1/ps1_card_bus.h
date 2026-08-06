@@ -1,6 +1,8 @@
 #ifndef PS1_CARD_BUS_H
 #define PS1_CARD_BUS_H
 
+/* PS1 serial bus transaction control. */
+
 #include <stdbool.h>
 
 void ps1emu_handle_transaction(void);

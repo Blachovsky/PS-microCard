@@ -1,6 +1,8 @@
 #ifndef APP_LOG_H
 #define APP_LOG_H
 
+/* Application-wide logging API. */
+
 #define APP_LOG_LEVEL_NONE    (-1)
 #define APP_LOG_LEVEL_ERROR   0
 #define APP_LOG_LEVEL_WARNING 1

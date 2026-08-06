@@ -1,6 +1,8 @@
 #ifndef HARDWARE_CONFIG_H
 #define HARDWARE_CONFIG_H
 
+/* Board pinout and peripheral configuration. */
+
 #include <stddef.h>
 
 #include "sd_card.h"

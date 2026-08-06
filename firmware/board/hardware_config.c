@@ -1,4 +1,4 @@
-#include "hardware_config.h"
+#include "board/hardware_config.h"
 
 #include "hw_config.h"
 #include "pico/stdlib.h"

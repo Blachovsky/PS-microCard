@@ -1,4 +1,4 @@
-#include "ps1_card_emulator.h"
+#include "ps1/ps1_card_emulator.h"
 
 #include "pico/stdlib.h"
 

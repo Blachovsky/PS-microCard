@@ -1,6 +1,8 @@
 #ifndef OLED_H
 #define OLED_H
 
+/* SSD1306 OLED driver and application status screens. */
+
 #include <stdbool.h>
 #include <stdint.h>
 

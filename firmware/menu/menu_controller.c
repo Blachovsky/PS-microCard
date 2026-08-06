@@ -1,7 +1,7 @@
-#include "menu_controller.h"
+#include "menu/menu_controller.h"
 
-#include "menu_display.h"
-#include "menu_storage.h"
+#include "menu/menu_display.h"
+#include "menu/menu_storage.h"
 
 #include "pico/stdlib.h"
 

@@ -1,8 +1,8 @@
-#include "app_log.h"
-#include "hardware_config.h"
-#include "menu.h"
-#include "ps1_card_bus.h"
-#include "ps1_card_emulator.h"
+#include "app/app_log.h"
+#include "board/hardware_config.h"
+#include "menu/menu.h"
+#include "ps1/ps1_card_bus.h"
+#include "ps1/ps1_card_emulator.h"
 
 #include "hardware/sync.h"
 #include "pico/multicore.h"

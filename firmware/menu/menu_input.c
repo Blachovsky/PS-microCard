@@ -1,6 +1,6 @@
-#include "menu_input.h"
+#include "menu/menu_input.h"
 
-#include "hardware_config.h"
+#include "board/hardware_config.h"
 
 #include "pico/stdlib.h"
 

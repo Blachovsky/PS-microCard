@@ -1,13 +1,13 @@
-#include "menu.h"
+#include "menu/menu.h"
 
-#include "app_log.h"
-#include "menu_controller.h"
-#include "menu_display.h"
-#include "menu_input.h"
-#include "menu_storage.h"
-#include "micro_sd.h"
-#include "ps1_card_bus.h"
-#include "ps1_card_emulator.h"
+#include "app/app_log.h"
+#include "menu/menu_controller.h"
+#include "menu/menu_display.h"
+#include "menu/menu_input.h"
+#include "menu/menu_storage.h"
+#include "ps1/ps1_card_bus.h"
+#include "ps1/ps1_card_emulator.h"
+#include "storage/micro_sd.h"
 
 #include "pico/stdlib.h"
 

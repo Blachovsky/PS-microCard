@@ -1,8 +1,8 @@
 #ifndef MENU_CONTROLLER_H
 #define MENU_CONTROLLER_H
 
-#include "menu_input.h"
-#include "micro_sd.h"
+#include "menu/menu_input.h"
+#include "storage/micro_sd.h"
 
 #include <stdbool.h>
 

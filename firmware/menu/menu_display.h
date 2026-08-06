@@ -1,7 +1,7 @@
 #ifndef MENU_DISPLAY_H
 #define MENU_DISPLAY_H
 
-#include "oled.h"
+#include "drivers/oled.h"
 
 #include <stdbool.h>
 #include <stddef.h>

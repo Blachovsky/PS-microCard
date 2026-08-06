@@ -1,8 +1,8 @@
-#include "oled.h"
+#include "drivers/oled.h"
 
-#include "app_log.h"
-#include "hardware_config.h"
-#include "oled_font.h"
+#include "app/app_log.h"
+#include "board/hardware_config.h"
+#include "drivers/oled_font.h"
 
 #include "hardware/spi.h"
 #include "pico/stdlib.h"

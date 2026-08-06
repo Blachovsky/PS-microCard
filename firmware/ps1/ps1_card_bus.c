@@ -1,7 +1,7 @@
-#include "ps1_card_bus.h"
+#include "ps1/ps1_card_bus.h"
 
-#include "hardware_config.h"
-#include "ps1_card_emulator.h"
+#include "board/hardware_config.h"
+#include "ps1/ps1_card_emulator.h"
 #include "pico/stdlib.h"
 
 #include <stdbool.h>

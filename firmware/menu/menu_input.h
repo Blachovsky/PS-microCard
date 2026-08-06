@@ -1,6 +1,8 @@
 #ifndef MENU_INPUT_H
 #define MENU_INPUT_H
 
+/* Debounced two-button input events. */
+
 #include <stdbool.h>
 
 typedef enum {
