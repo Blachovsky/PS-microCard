@@ -1,5 +1,5 @@
-#ifndef MICROSD_H
-#define MICROSD_H
+#ifndef MICRO_SD_H
+#define MICRO_SD_H
 
 #include "hardware_config.h"
 
@@ -52,4 +52,4 @@ size_t micro_sd_list_saves(const char *image_name,
 bool micro_sd_activate_image_as_inserted_card(const char *image_name);
 bool micro_sd_delete_image(const char *image_name);
 
-#endif // MICROSD_H
+#endif // MICRO_SD_H

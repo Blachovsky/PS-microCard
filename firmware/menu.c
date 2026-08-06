@@ -1,7 +1,7 @@
 #include "menu.h"
 
 #include "hardware_config.h"
-#include "microSD.h"
+#include "micro_sd.h"
 #include "oled.h"
 #include "ps1_card_bus.h"
 #include "ps1_card_emulator.h"

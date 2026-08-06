@@ -47,7 +47,7 @@ add_executable(
     hardware_config.c
     menu.c
     oled.c 
-    microSD.c
+    micro_sd.c
     ps1_card_emulator.c
     ps1_card_bus.c
     )
