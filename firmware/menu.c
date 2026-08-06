@@ -1,6 +1,7 @@
 #include "menu.h"
 
 #include "app_log.h"
+#include "menu_card_monitor.h"
 #include "menu_input.h"
 #include "menu_view.h"
 #include "micro_sd.h"
@@ -18,9 +19,6 @@
 #define MENU_POLL_MS          10u
 #define MENU_MESSAGE_MS       1400u
 #define MENU_DISPLAY_IDLE_MS  30000u
-#define MENU_CARD_DEBOUNCE_MS 100u
-#define MENU_CARD_RETRY_MS    1000u
-#define MENU_CARD_PROBE_MS    1000u
 #define LOG_TAG               "menu"
 
 typedef enum {
@@ -34,12 +32,6 @@ typedef enum {
     MENU_SCREEN_NO_CARD,
     MENU_SCREEN_CARD_ERROR,
 } menu_screen_t;
-
-typedef struct {
-    bool raw_present;
-    bool stable_present;
-    uint32_t raw_changed_ms;
-} card_detect_state_t;
 
 static menu_screen_t screen = MENU_SCREEN_STATUS;
 static menu_screen_t message_return_screen = MENU_SCREEN_STATUS;
@@ -71,45 +63,6 @@ static uint32_t millis_now(void) {
 
 static bool menu_time_reached(uint32_t deadline_ms) {
     return (int32_t)(millis_now() - deadline_ms) >= 0;
-}
-
-static void card_detect_state_init(card_detect_state_t *state) {
-    if (state == NULL) {
-        return;
-    }
-
-    state->raw_present = micro_sd_card_present();
-    state->stable_present = state->raw_present;
-    state->raw_changed_ms = millis_now();
-}
-
-static bool card_detect_poll(card_detect_state_t *state, bool *changed) {
-    uint32_t now = millis_now();
-    bool raw_present = micro_sd_card_present();
-
-    if (changed != NULL) {
-        *changed = false;
-    }
-
-    if (state == NULL) {
-        return raw_present;
-    }
-
-    if (raw_present != state->raw_present) {
-        state->raw_present = raw_present;
-        state->raw_changed_ms = now;
-    }
-
-    if (raw_present != state->stable_present &&
-        (uint32_t)(now - state->raw_changed_ms) >= MENU_CARD_DEBOUNCE_MS) {
-        state->stable_present = raw_present;
-
-        if (changed != NULL) {
-            *changed = true;
-        }
-    }
-
-    return state->stable_present;
 }
 
 static void show_message(menu_screen_t return_screen,
@@ -358,7 +311,7 @@ static micro_sd_result_t reload_inserted_card(const char *initial_image_path) {
 
     ps1_bus_set_card_present(false);
 
-    if (!micro_sd_card_present()) {
+    if (!menu_card_monitor_is_physically_present()) {
         micro_sd_handle_card_unavailable();
         render_no_card();
         return MICRO_SD_ERROR_CARD_NOT_PRESENT;
@@ -376,38 +329,21 @@ static micro_sd_result_t reload_inserted_card(const char *initial_image_path) {
     micro_sd_save_worker_init(micro_sd_active_image_path());
     ps1_bus_begin_card_swap_absent();
     ps1_bus_set_card_present(true);
-    micro_sd_clear_card_removed_event();
+    menu_card_monitor_mark_ready();
     last_card_error = MICRO_SD_RESULT_OK;
     screen = MENU_SCREEN_STATUS;
     render_status();
     return MICRO_SD_RESULT_OK;
 }
 
-static void handle_card_removed(card_detect_state_t *card_detect,
-                                bool oled_ok,
+static void handle_card_removed(bool oled_ok,
                                 bool *display_awake,
-                                bool *card_ready,
-                                uint32_t *next_card_retry_ms,
                                 uint32_t *last_button_activity_ms) {
     uint32_t now = millis_now();
-
-    if (card_detect != NULL) {
-        card_detect->raw_present = false;
-        card_detect->stable_present = false;
-        card_detect->raw_changed_ms = now;
-    }
 
     if (display_awake != NULL && oled_ok && !*display_awake) {
         oled_set_display_enabled(true);
         *display_awake = true;
-    }
-
-    if (card_ready != NULL) {
-        *card_ready = false;
-    }
-
-    if (next_card_retry_ms != NULL) {
-        *next_card_retry_ms = 0u;
     }
 
     if (last_button_activity_ms != NULL) {
@@ -543,17 +479,12 @@ void menu_task_run(const char *initial_image_path) {
     oled_result_t oled_result;
     bool display_awake = false;
     bool ignore_buttons_until_release = false;
-    bool card_ready = false;
-    card_detect_state_t card_detect;
     uint32_t last_button_activity_ms = millis_now();
-    uint32_t next_card_retry_ms = 0u;
-    uint32_t next_card_probe_ms = 0u;
     uint32_t last_oled_update_count = 0u;
     micro_sd_result_t result;
 
     menu_input_init();
-    micro_sd_card_detect_init();
-    card_detect_state_init(&card_detect);
+    menu_card_monitor_init();
     micro_sd_save_worker_init(initial_image_path);
     ps1_bus_set_card_present(false);
 
@@ -570,12 +501,11 @@ void menu_task_run(const char *initial_image_path) {
                   (int)oled_result);
     }
 
-    if (card_detect.stable_present) {
+    if (menu_card_monitor_is_present()) {
         result = reload_inserted_card(initial_image_path);
-        card_ready = result == MICRO_SD_RESULT_OK;
 
-        if (!card_ready) {
-            next_card_retry_ms = millis_now() + MENU_CARD_RETRY_MS;
+        if (result != MICRO_SD_RESULT_OK) {
+            menu_card_monitor_mark_error();
         }
     } else {
         micro_sd_handle_card_unavailable();
@@ -583,100 +513,67 @@ void menu_task_run(const char *initial_image_path) {
     }
 
     while (true) {
-        bool card_changed = false;
-        bool raw_card_present = micro_sd_card_present();
-        bool card_removed = micro_sd_card_removed_event();
-        bool card_present;
+        menu_card_event_t card_event = menu_card_monitor_poll();
 
-        if (card_ready && (!raw_card_present || card_removed)) {
-            handle_card_removed(&card_detect,
-                                oled_ok,
+        if (card_event == MENU_CARD_EVENT_REMOVED) {
+            handle_card_removed(oled_ok,
                                 &display_awake,
-                                &card_ready,
-                                &next_card_retry_ms,
                                 &last_button_activity_ms);
-        }
+        } else if (card_event == MENU_CARD_EVENT_INSERTED ||
+                   card_event == MENU_CARD_EVENT_RETRY_DUE) {
+            bool card_inserted = card_event == MENU_CARD_EVENT_INSERTED;
 
-        card_present = card_detect_poll(&card_detect, &card_changed);
-
-        if (card_changed) {
-            last_button_activity_ms = millis_now();
-
-            if (oled_ok && !display_awake) {
-                oled_set_display_enabled(true);
-                display_awake = true;
-            }
-
-            if (card_present) {
-                result = reload_inserted_card(initial_image_path);
-                card_ready = result == MICRO_SD_RESULT_OK;
-                next_card_retry_ms = card_ready
-                        ? 0u
-                        : millis_now() + MENU_CARD_RETRY_MS;
-            } else {
-                handle_card_removed(&card_detect,
-                                    oled_ok,
-                                    &display_awake,
-                                    &card_ready,
-                                    &next_card_retry_ms,
-                                    &last_button_activity_ms);
-            }
-        } else if (card_present &&
-                   !card_ready &&
-                   menu_time_reached(next_card_retry_ms)) {
-            result = reload_inserted_card(initial_image_path);
-            card_ready = result == MICRO_SD_RESULT_OK;
-            next_card_retry_ms = card_ready
-                    ? 0u
-                    : millis_now() + MENU_CARD_RETRY_MS;
-
-            if (card_ready && oled_ok && !display_awake) {
-                oled_set_display_enabled(true);
-                display_awake = true;
+            if (card_inserted) {
                 last_button_activity_ms = millis_now();
-            }
-        }
 
-        if (card_ready) {
-            if (menu_time_reached(next_card_probe_ms)) {
-                next_card_probe_ms = millis_now() + MENU_CARD_PROBE_MS;
-                result = micro_sd_check_active_image_accessible();
-
-                if (result != MICRO_SD_RESULT_OK) {
-                    if (micro_sd_card_present()) {
-                        last_card_error = result;
-                        card_ready = false;
-                        next_card_retry_ms = millis_now() + MENU_CARD_RETRY_MS;
-                        micro_sd_handle_card_unavailable();
-                        render_card_error();
-                    } else {
-                        handle_card_removed(&card_detect,
-                                            oled_ok,
-                                            &display_awake,
-                                            &card_ready,
-                                            &next_card_retry_ms,
-                                            &last_button_activity_ms);
-                    }
+                if (oled_ok && !display_awake) {
+                    oled_set_display_enabled(true);
+                    display_awake = true;
                 }
             }
 
-            if (card_ready) {
-                result = micro_sd_save_worker_poll();
+            result = reload_inserted_card(initial_image_path);
 
-                if (result != MICRO_SD_RESULT_OK) {
-                    if (micro_sd_card_present()) {
-                        last_card_error = result;
-                        card_ready = false;
-                        next_card_retry_ms = millis_now() + MENU_CARD_RETRY_MS;
-                        render_card_error();
-                    } else {
-                        handle_card_removed(&card_detect,
-                                            oled_ok,
-                                            &display_awake,
-                                            &card_ready,
-                                            &next_card_retry_ms,
-                                            &last_button_activity_ms);
-                    }
+            if (result == MICRO_SD_RESULT_OK) {
+                if (!card_inserted && oled_ok && !display_awake) {
+                    oled_set_display_enabled(true);
+                    display_awake = true;
+                    last_button_activity_ms = millis_now();
+                }
+            } else {
+                menu_card_monitor_mark_error();
+            }
+        } else if (card_event == MENU_CARD_EVENT_PROBE_DUE) {
+            result = micro_sd_check_active_image_accessible();
+
+            if (result != MICRO_SD_RESULT_OK) {
+                if (menu_card_monitor_is_physically_present()) {
+                    last_card_error = result;
+                    menu_card_monitor_mark_error();
+                    micro_sd_handle_card_unavailable();
+                    render_card_error();
+                } else {
+                    menu_card_monitor_mark_removed();
+                    handle_card_removed(oled_ok,
+                                        &display_awake,
+                                        &last_button_activity_ms);
+                }
+            }
+        }
+
+        if (menu_card_monitor_is_ready()) {
+            result = micro_sd_save_worker_poll();
+
+            if (result != MICRO_SD_RESULT_OK) {
+                if (menu_card_monitor_is_physically_present()) {
+                    last_card_error = result;
+                    menu_card_monitor_mark_error();
+                    render_card_error();
+                } else {
+                    menu_card_monitor_mark_removed();
+                    handle_card_removed(oled_ok,
+                                        &display_awake,
+                                        &last_button_activity_ms);
                 }
             }
         }
@@ -684,7 +581,7 @@ void menu_task_run(const char *initial_image_path) {
         menu_input_event_t event = menu_input_poll();
         bool button_pressed = menu_input_any_pressed();
         bool button_activity = button_pressed || event != MENU_INPUT_EVENT_NONE;
-        bool handle_buttons = card_ready;
+        bool handle_buttons = menu_card_monitor_is_ready();
 
         if (oled_ok) {
             if (button_activity) {
@@ -712,7 +609,7 @@ void menu_task_run(const char *initial_image_path) {
             }
         }
 
-        if (handle_buttons && card_ready) {
+        if (handle_buttons && menu_card_monitor_is_ready()) {
             handle_event(event);
 
             if (oled_ok && display_awake && event != MENU_INPUT_EVENT_NONE) {
@@ -720,7 +617,7 @@ void menu_task_run(const char *initial_image_path) {
             }
         }
 
-        if (card_ready &&
+        if (menu_card_monitor_is_ready() &&
             screen == MENU_SCREEN_MESSAGE &&
             menu_time_reached(message_until_ms)) {
             screen = message_return_screen;
