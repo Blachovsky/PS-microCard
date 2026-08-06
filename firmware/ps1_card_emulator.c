@@ -47,13 +47,16 @@ static void __not_in_flash_func(copy_frame_to_card)(
     }
 }
 
-bool __not_in_flash_func(ps1emu_commit_frame)(
+ps1emu_result_t __not_in_flash_func(ps1emu_commit_frame)(
         uint16_t frame_addr,
         const uint8_t data[PS1_FRAME_SIZE]) {
-    uint8_t *frame = get_frame_ptr(frame_addr);
+    if (data == NULL) {
+        return PS1EMU_ERROR_INVALID_ARGUMENT;
+    }
 
-    if (frame == NULL || data == NULL) {
-        return false;
+    uint8_t *frame = get_frame_ptr(frame_addr);
+    if (frame == NULL) {
+        return PS1EMU_ERROR_FRAME_OUT_OF_RANGE;
     }
 
     uint32_t sequence = __atomic_load_n(&frame_sequence[frame_addr],
@@ -76,16 +79,19 @@ bool __not_in_flash_func(ps1emu_commit_frame)(
 
     /* Wake core 1 if it is waiting in WFE for the first change. */
     __sev();
-    return true;
+    return PS1EMU_RESULT_OK;
 }
 
-static bool snapshot_frame(uint16_t frame_addr,
-                           uint32_t *stable_version,
-                           uint8_t data[PS1_FRAME_SIZE]) {
-    if (frame_addr >= PS1_FRAME_COUNT ||
-        stable_version == NULL ||
-        data == NULL) {
-        return false;
+static ps1emu_result_t snapshot_frame(
+        uint16_t frame_addr,
+        uint32_t *stable_version,
+        uint8_t data[PS1_FRAME_SIZE]) {
+    if (stable_version == NULL || data == NULL) {
+        return PS1EMU_ERROR_INVALID_ARGUMENT;
+    }
+
+    if (frame_addr >= PS1_FRAME_COUNT) {
+        return PS1EMU_ERROR_FRAME_OUT_OF_RANGE;
     }
 
     const uint8_t *frame = &card_image[(size_t)frame_addr * PS1_FRAME_SIZE];
@@ -105,18 +111,19 @@ static bool snapshot_frame(uint16_t frame_addr,
 
         if (before == after && !(after & 1u)) {
             *stable_version = after;
-            return true;
+            return PS1EMU_RESULT_OK;
         }
     }
 
-    return false;
+    return PS1EMU_ERROR_SNAPSHOT_BUSY;
 }
 
-bool ps1emu_take_changed_frame(uint16_t *frame_addr,
-                               uint32_t *frame_version,
-                               uint8_t data[PS1_FRAME_SIZE]) {
+ps1emu_result_t ps1emu_take_changed_frame(
+        uint16_t *frame_addr,
+        uint32_t *frame_version,
+        uint8_t data[PS1_FRAME_SIZE]) {
     if (frame_addr == NULL || frame_version == NULL || data == NULL) {
-        return false;
+        return PS1EMU_ERROR_INVALID_ARGUMENT;
     }
 
     for (uint16_t checked = 0; checked < PS1_FRAME_COUNT; ++checked) {
@@ -132,8 +139,15 @@ bool ps1emu_take_changed_frame(uint16_t *frame_addr,
 
         uint32_t stable_version;
 
-        if (!snapshot_frame(candidate, &stable_version, data)) {
+        ps1emu_result_t result = snapshot_frame(candidate,
+                                                &stable_version,
+                                                data);
+        if (result == PS1EMU_ERROR_SNAPSHOT_BUSY) {
             continue;
+        }
+
+        if (result != PS1EMU_RESULT_OK) {
+            return result;
         }
 
         if (stable_version == observed_sequence[candidate]) {
@@ -143,10 +157,10 @@ bool ps1emu_take_changed_frame(uint16_t *frame_addr,
         observed_sequence[candidate] = stable_version;
         *frame_addr = candidate;
         *frame_version = stable_version;
-        return true;
+        return PS1EMU_RESULT_OK;
     }
 
-    return false;
+    return PS1EMU_RESULT_NO_CHANGED_FRAME;
 }
 
 void ps1emu_confirm_frame_synced(uint16_t frame_addr,

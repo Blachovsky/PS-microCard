@@ -70,6 +70,7 @@ static size_t image_index;
 static size_t save_count;
 static size_t save_index;
 static bool confirm_delete_yes;
+static micro_sd_result_t last_card_error = MICRO_SD_RESULT_OK;
 
 static micro_sd_image_entry_t images[MICRO_SD_MAX_IMAGES];
 static micro_sd_save_entry_t saves[MICRO_SD_MAX_SAVES];
@@ -228,6 +229,21 @@ static void show_message(menu_screen_t return_screen,
     oled_show_text(line0, line1, line2, line3);
 }
 
+static void show_micro_sd_error(menu_screen_t return_screen,
+                                const char *operation,
+                                const char *detail,
+                                micro_sd_result_t result) {
+    printf("%s: %s (%d)\n",
+           operation,
+           micro_sd_result_string(result),
+           (int)result);
+    show_message(return_screen,
+                 operation,
+                 detail,
+                 micro_sd_result_string(result),
+                 "");
+}
+
 static void render_status(void) {
     oled_show_ready_for_image(micro_sd_active_image_name());
 }
@@ -243,7 +259,7 @@ static void render_no_card(void) {
 static void render_card_error(void) {
     screen = MENU_SCREEN_CARD_ERROR;
     oled_show_text("MICROSD ERROR",
-                   "CHECK CARD",
+                   micro_sd_result_string(last_card_error),
                    "REINSERT CARD",
                    "");
 }
@@ -287,9 +303,9 @@ static void render_image_browser(const char *title) {
 
     (void)snprintf(index_line,
                    sizeof(index_line),
-                   "%02u/%02u %s",
-                   (unsigned)(image_index + 1u),
-                   (unsigned)image_count,
+                   "%02hhu/%02hhu %.12s",
+                   (unsigned)(uint8_t)(image_index + 1u),
+                   (unsigned)(uint8_t)image_count,
                    images[image_index].name);
 
     if (micro_sd_is_active_image(images[image_index].name)) {
@@ -339,7 +355,16 @@ static void render_saves(void) {
 }
 
 static void enter_saves(void) {
-    (void)micro_sd_save_worker_flush();
+    micro_sd_result_t result = micro_sd_save_worker_flush();
+
+    if (result != MICRO_SD_RESULT_OK) {
+        show_micro_sd_error(MENU_SCREEN_MAIN,
+                            "READ SAVES FAILED",
+                            micro_sd_active_image_name(),
+                            result);
+        return;
+    }
+
     save_count = micro_sd_list_saves(micro_sd_active_image_name(),
                                      saves,
                                      MICRO_SD_MAX_SAVES);
@@ -364,20 +389,28 @@ static void render_delete_confirm(void) {
 
 static void create_new_image(void) {
     char new_name[MICRO_SD_IMAGE_NAME_MAX];
+    micro_sd_result_t result;
 
     oled_show_text("CREATING IMAGE",
                    "PLEASE WAIT",
                    "",
                    "");
 
-    (void)micro_sd_save_worker_flush();
+    result = micro_sd_save_worker_flush();
+    if (result != MICRO_SD_RESULT_OK) {
+        show_micro_sd_error(MENU_SCREEN_MAIN,
+                            "CREATE FAILED",
+                            "FLUSH ACTIVE IMAGE",
+                            result);
+        return;
+    }
 
-    if (!micro_sd_create_blank_image_auto(new_name)) {
-        show_message(MENU_SCREEN_MAIN,
-                     "CREATE FAILED",
-                     "CHECK MICROSD",
-                     "",
-                     "");
+    result = micro_sd_create_blank_image_auto(new_name);
+    if (result != MICRO_SD_RESULT_OK) {
+        show_micro_sd_error(MENU_SCREEN_MAIN,
+                            "CREATE FAILED",
+                            "CHECK MICROSD",
+                            result);
         return;
     }
 
@@ -386,12 +419,12 @@ static void create_new_image(void) {
                    "PLEASE WAIT",
                    "");
 
-    if (!micro_sd_activate_image_as_inserted_card(new_name)) {
-        show_message(MENU_SCREEN_MAIN,
-                     "CREATED",
-                     new_name,
-                     "LOAD FAILED",
-                     "");
+    result = micro_sd_activate_image_as_inserted_card(new_name);
+    if (result != MICRO_SD_RESULT_OK) {
+        show_micro_sd_error(MENU_SCREEN_MAIN,
+                            "LOAD FAILED",
+                            new_name,
+                            result);
         return;
     }
 
@@ -403,6 +436,8 @@ static void create_new_image(void) {
 }
 
 static void select_current_image(void) {
+    micro_sd_result_t result;
+
     if (image_count == 0u) {
         return;
     }
@@ -412,39 +447,42 @@ static void select_current_image(void) {
                    "PLEASE WAIT",
                    "");
 
-    if (micro_sd_activate_image_as_inserted_card(images[image_index].name)) {
+    result = micro_sd_activate_image_as_inserted_card(
+            images[image_index].name);
+    if (result == MICRO_SD_RESULT_OK) {
         show_message(MENU_SCREEN_STATUS,
                      "SELECTED",
                      images[image_index].name,
                      "",
                      "");
     } else {
-        show_message(MENU_SCREEN_SELECT_IMAGE,
-                     "LOAD FAILED",
-                     images[image_index].name,
-                     "CHECK IMAGE",
-                     "");
+        show_micro_sd_error(MENU_SCREEN_SELECT_IMAGE,
+                            "LOAD FAILED",
+                            images[image_index].name,
+                            result);
     }
 }
 
 static void delete_current_image(void) {
+    micro_sd_result_t result;
+
     oled_show_text("DELETING IMAGE",
                    delete_candidate,
                    "PLEASE WAIT",
                    "");
 
-    if (micro_sd_delete_image(delete_candidate)) {
+    result = micro_sd_delete_image(delete_candidate);
+    if (result == MICRO_SD_RESULT_OK) {
         show_message(MENU_SCREEN_STATUS,
                      "DELETED",
                      delete_candidate,
                      "ACTIVE:",
                      micro_sd_active_image_name());
     } else {
-        show_message(MENU_SCREEN_DELETE_IMAGE,
-                     "DELETE FAILED",
-                     delete_candidate,
-                     "CHECK MICROSD",
-                     "");
+        show_micro_sd_error(MENU_SCREEN_DELETE_IMAGE,
+                            "DELETE FAILED",
+                            delete_candidate,
+                            result);
     }
 }
 
@@ -481,19 +519,26 @@ static void render_current_screen(void) {
     }
 }
 
-static bool reload_inserted_card(const char *initial_image_path) {
+static micro_sd_result_t reload_inserted_card(const char *initial_image_path) {
+    micro_sd_result_t result;
+
     ps1_bus_set_card_present(false);
 
     if (!micro_sd_card_present()) {
         micro_sd_handle_card_unavailable();
         render_no_card();
-        return false;
+        return MICRO_SD_ERROR_CARD_NOT_PRESENT;
     }
 
-    if (!micro_sd_load_or_create_initial_image(initial_image_path)) {
+    result = micro_sd_load_or_create_initial_image(initial_image_path);
+    if (result != MICRO_SD_RESULT_OK) {
+        last_card_error = result;
+        printf("Card reload failed: %s (%d)\n",
+               micro_sd_result_string(result),
+               (int)result);
         micro_sd_handle_card_unavailable();
         render_card_error();
-        return false;
+        return result;
     }
 
     ps1emu_storage_state_init();
@@ -501,9 +546,10 @@ static bool reload_inserted_card(const char *initial_image_path) {
     ps1_bus_begin_card_swap_absent();
     ps1_bus_set_card_present(true);
     micro_sd_clear_card_removed_event();
+    last_card_error = MICRO_SD_RESULT_OK;
     screen = MENU_SCREEN_STATUS;
     render_status();
-    return true;
+    return MICRO_SD_RESULT_OK;
 }
 
 static void handle_card_removed(card_detect_state_t *card_detect,
@@ -663,6 +709,7 @@ static void handle_event(button_event_t event) {
 
 void menu_task_run(const char *initial_image_path) {
     bool oled_ok;
+    oled_result_t oled_result;
     bool display_awake = false;
     bool ignore_buttons_until_release = false;
     bool card_ready = false;
@@ -671,6 +718,7 @@ void menu_task_run(const char *initial_image_path) {
     uint32_t next_card_retry_ms = 0u;
     uint32_t next_card_probe_ms = 0u;
     uint32_t last_oled_update_count = 0u;
+    micro_sd_result_t result;
 
     buttons_init();
     micro_sd_card_detect_init();
@@ -678,18 +726,20 @@ void menu_task_run(const char *initial_image_path) {
     micro_sd_save_worker_init(initial_image_path);
     ps1_bus_set_card_present(false);
 
-    oled_ok = oled_init();
+    oled_result = oled_init();
+    oled_ok = oled_result == OLED_RESULT_OK;
 
     if (oled_ok) {
         display_awake = true;
         last_button_activity_ms = millis_now();
         last_oled_update_count = oled_get_update_count();
     } else {
-        printf("OLED initialization failed\n");
+        printf("OLED initialization failed: %d\n", (int)oled_result);
     }
 
     if (card_detect.stable_present) {
-        card_ready = reload_inserted_card(initial_image_path);
+        result = reload_inserted_card(initial_image_path);
+        card_ready = result == MICRO_SD_RESULT_OK;
 
         if (!card_ready) {
             next_card_retry_ms = millis_now() + MENU_CARD_RETRY_MS;
@@ -725,7 +775,8 @@ void menu_task_run(const char *initial_image_path) {
             }
 
             if (card_present) {
-                card_ready = reload_inserted_card(initial_image_path);
+                result = reload_inserted_card(initial_image_path);
+                card_ready = result == MICRO_SD_RESULT_OK;
                 next_card_retry_ms = card_ready
                         ? 0u
                         : millis_now() + MENU_CARD_RETRY_MS;
@@ -740,7 +791,8 @@ void menu_task_run(const char *initial_image_path) {
         } else if (card_present &&
                    !card_ready &&
                    menu_time_reached(next_card_retry_ms)) {
-            card_ready = reload_inserted_card(initial_image_path);
+            result = reload_inserted_card(initial_image_path);
+            card_ready = result == MICRO_SD_RESULT_OK;
             next_card_retry_ms = card_ready
                     ? 0u
                     : millis_now() + MENU_CARD_RETRY_MS;
@@ -755,9 +807,11 @@ void menu_task_run(const char *initial_image_path) {
         if (card_ready) {
             if (menu_time_reached(next_card_probe_ms)) {
                 next_card_probe_ms = millis_now() + MENU_CARD_PROBE_MS;
+                result = micro_sd_check_active_image_accessible();
 
-                if (!micro_sd_active_image_accessible()) {
+                if (result != MICRO_SD_RESULT_OK) {
                     if (micro_sd_card_present()) {
+                        last_card_error = result;
                         card_ready = false;
                         next_card_retry_ms = millis_now() + MENU_CARD_RETRY_MS;
                         micro_sd_handle_card_unavailable();
@@ -774,10 +828,11 @@ void menu_task_run(const char *initial_image_path) {
             }
 
             if (card_ready) {
-                micro_sd_save_worker_poll();
+                result = micro_sd_save_worker_poll();
 
-                if (!micro_sd_storage_ready()) {
+                if (result != MICRO_SD_RESULT_OK) {
                     if (micro_sd_card_present()) {
+                        last_card_error = result;
                         card_ready = false;
                         next_card_retry_ms = millis_now() + MENU_CARD_RETRY_MS;
                         render_card_error();

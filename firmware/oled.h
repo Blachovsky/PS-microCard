@@ -4,11 +4,17 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+typedef enum {
+    OLED_RESULT_OK = 0,
+    OLED_ERROR_SPI_INIT_FAILED,
+    OLED_ERROR_SPI_WRITE_FAILED,
+} oled_result_t;
+
 /*
  * Minimal SSD1306 driver for the DFRobot DFR0650 in 4-wire SPI mode.
  * All functions should be called only from core 1.
  */
-bool oled_init(void);
+oled_result_t oled_init(void);
 void oled_set_display_enabled(bool enabled);
 uint32_t oled_get_update_count(void);
 void oled_show_text(const char *line0,

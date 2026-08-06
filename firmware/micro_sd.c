@@ -40,12 +40,51 @@ static bool unsynced_frames[PS1_FRAME_COUNT];
 static uint32_t unsynced_versions[PS1_FRAME_COUNT];
 static bool fs_mounted;
 static bool card_detect_initialized;
-static bool storage_ready;
+static micro_sd_result_t storage_result = MICRO_SD_ERROR_CARD_NOT_PRESENT;
 static volatile bool card_removed_latched;
 
 static char active_image_path[MICRO_SD_IMAGE_PATH_MAX] = "0:/CARD000.MCR";
 static char active_image_name[MICRO_SD_IMAGE_NAME_MAX] = "CARD000.MCR";
 static save_worker_state_t save_worker;
+
+const char *micro_sd_result_string(micro_sd_result_t result) {
+    switch (result) {
+        case MICRO_SD_RESULT_OK:
+            return "OK";
+        case MICRO_SD_ERROR_INVALID_ARGUMENT:
+            return "INVALID ARGUMENT";
+        case MICRO_SD_ERROR_CARD_NOT_PRESENT:
+            return "CARD NOT PRESENT";
+        case MICRO_SD_ERROR_MOUNT_FAILED:
+            return "MOUNT FAILED";
+        case MICRO_SD_ERROR_STAT_FAILED:
+            return "STAT FAILED";
+        case MICRO_SD_ERROR_FILE_NOT_FOUND:
+            return "FILE NOT FOUND";
+        case MICRO_SD_ERROR_INVALID_IMAGE_SIZE:
+            return "BAD IMAGE SIZE";
+        case MICRO_SD_ERROR_OPEN_FAILED:
+            return "OPEN FAILED";
+        case MICRO_SD_ERROR_READ_FAILED:
+            return "READ FAILED";
+        case MICRO_SD_ERROR_SEEK_FAILED:
+            return "SEEK FAILED";
+        case MICRO_SD_ERROR_WRITE_FAILED:
+            return "WRITE FAILED";
+        case MICRO_SD_ERROR_SYNC_FAILED:
+            return "SYNC FAILED";
+        case MICRO_SD_ERROR_CLOSE_FAILED:
+            return "CLOSE FAILED";
+        case MICRO_SD_ERROR_DELETE_FAILED:
+            return "DELETE FAILED";
+        case MICRO_SD_ERROR_NO_FREE_IMAGE_NAME:
+            return "NO FREE IMAGE NAME";
+        case MICRO_SD_ERROR_FRAME_FETCH_FAILED:
+            return "FRAME FETCH FAILED";
+        default:
+            return "UNKNOWN ERROR";
+    }
+}
 
 static bool card_detect_pin_present(void) {
     return gpio_get(SD_DETECT_PIN) == SD_DETECT_PRESENT_LEVEL;
@@ -94,8 +133,12 @@ void micro_sd_clear_card_removed_event(void) {
     card_removed_latched = false;
 }
 
-bool micro_sd_storage_ready(void) {
-    return storage_ready && micro_sd_card_present();
+micro_sd_result_t micro_sd_storage_result(void) {
+    if (!micro_sd_card_present()) {
+        return MICRO_SD_ERROR_CARD_NOT_PRESENT;
+    }
+
+    return storage_result;
 }
 
 static char ascii_upper(char c) {
@@ -189,26 +232,26 @@ bool micro_sd_is_active_image(const char *image_name) {
     return names_equal_ignore_case(name, active_image_name);
 }
 
-static bool micro_sd_mount(void) {
+static micro_sd_result_t micro_sd_mount(void) {
     if (!micro_sd_card_present()) {
         fs_mounted = false;
         (void)f_mount(NULL, "0:", 0);
-        return false;
+        return MICRO_SD_ERROR_CARD_NOT_PRESENT;
     }
 
     if (fs_mounted) {
-        return true;
+        return MICRO_SD_RESULT_OK;
     }
 
     FRESULT fr = f_mount(&fs, "0:", 1);
 
     if (fr != FR_OK) {
         printf("f_mount failed: %s %d\n", FRESULT_str(fr), fr);
-        return false;
+        return MICRO_SD_ERROR_MOUNT_FAILED;
     }
 
     fs_mounted = true;
-    return true;
+    return MICRO_SD_RESULT_OK;
 }
 
 static bool has_mcr_extension(const char *name) {
@@ -244,84 +287,110 @@ static bool stat_valid_image(const char *path, FILINFO *info) {
     return info->fsize == PS1_CARD_SIZE;
 }
 
-bool micro_sd_active_image_accessible(void) {
+micro_sd_result_t micro_sd_check_active_image_accessible(void) {
     FIL file;
     FRESULT fr;
     UINT read_bytes = 0;
     uint8_t probe_byte = 0;
-    bool accessible = false;
+    micro_sd_result_t result = MICRO_SD_RESULT_OK;
 
     if (save_worker.file_open || save_worker.needs_sync) {
-        return true;
+        return MICRO_SD_RESULT_OK;
     }
 
-    if (!micro_sd_mount()) {
-        return false;
+    result = micro_sd_mount();
+    if (result != MICRO_SD_RESULT_OK) {
+        return result;
     }
 
     fr = f_open(&file, active_image_path, FA_READ);
     if (fr != FR_OK) {
-        return false;
+        return fr == FR_NO_FILE
+                ? MICRO_SD_ERROR_FILE_NOT_FOUND
+                : MICRO_SD_ERROR_OPEN_FAILED;
     }
 
-    if (f_size(&file) == PS1_CARD_SIZE) {
+    if (f_size(&file) != PS1_CARD_SIZE) {
+        result = MICRO_SD_ERROR_INVALID_IMAGE_SIZE;
+    } else {
         fr = f_read(&file, &probe_byte, sizeof(probe_byte), &read_bytes);
-        accessible = fr == FR_OK && read_bytes == sizeof(probe_byte);
+        if (fr != FR_OK || read_bytes != sizeof(probe_byte)) {
+            result = MICRO_SD_ERROR_READ_FAILED;
+        }
     }
 
     fr = f_close(&file);
-    return accessible && fr == FR_OK;
+    if (result == MICRO_SD_RESULT_OK && fr != FR_OK) {
+        result = MICRO_SD_ERROR_CLOSE_FAILED;
+    }
+
+    return result;
 }
 
 static bool card_image_is_erased_blank(void);
-static bool overwrite_existing_image_with_blank_format(const char *path);
+static micro_sd_result_t overwrite_existing_image_with_blank_format(
+        const char *path);
 
-static bool load_card_image_from_sd(const char *path) {
+static micro_sd_result_t load_card_image_from_sd(const char *path) {
     FIL file;
     FILINFO info;
     FRESULT fr;
     UINT read_bytes;
+    micro_sd_result_t result;
 
-    if (!micro_sd_mount()) {
-        return false;
+    if (path == NULL || path[0] == '\0') {
+        return MICRO_SD_ERROR_INVALID_ARGUMENT;
+    }
+
+    result = micro_sd_mount();
+    if (result != MICRO_SD_RESULT_OK) {
+        return result;
     }
 
     fr = f_stat(path, &info);
     if (fr != FR_OK) {
         printf("f_stat failed: %s %d\n", FRESULT_str(fr), fr);
-        return false;
+        return fr == FR_NO_FILE
+                ? MICRO_SD_ERROR_FILE_NOT_FOUND
+                : MICRO_SD_ERROR_STAT_FAILED;
     }
 
     if (info.fsize != PS1_CARD_SIZE) {
         printf("Invalid card image size: %lu\n", (unsigned long)info.fsize);
-        return false;
+        return MICRO_SD_ERROR_INVALID_IMAGE_SIZE;
     }
 
     fr = f_open(&file, path, FA_READ);
     if (fr != FR_OK) {
         printf("f_open failed: %s %d\n", FRESULT_str(fr), fr);
-        return false;
+        return MICRO_SD_ERROR_OPEN_FAILED;
     }
 
     fr = f_read(&file, card_image, PS1_CARD_SIZE, &read_bytes);
-    (void)f_close(&file);
-
     if (fr != FR_OK || read_bytes != PS1_CARD_SIZE) {
         printf("f_read failed: fr=%d read=%u\n", fr, read_bytes);
-        return false;
+        (void)f_close(&file);
+        return MICRO_SD_ERROR_READ_FAILED;
+    }
+
+    fr = f_close(&file);
+    if (fr != FR_OK) {
+        printf("f_close failed: %s %d\n", FRESULT_str(fr), fr);
+        return MICRO_SD_ERROR_CLOSE_FAILED;
     }
 
     if (card_image_is_erased_blank()) {
         printf("Card image is erased blank, formatting: %s\n", path);
 
-        if (!overwrite_existing_image_with_blank_format(path)) {
-            return false;
+        result = overwrite_existing_image_with_blank_format(path);
+        if (result != MICRO_SD_RESULT_OK) {
+            return result;
         }
     }
 
     set_active_image_path(path);
     printf("Card image loaded: %s\n", path);
-    return true;
+    return MICRO_SD_RESULT_OK;
 }
 
 static uint8_t frame_checksum(const uint8_t frame[PS1_FRAME_SIZE]) {
@@ -375,7 +444,8 @@ static bool card_image_is_erased_blank(void) {
            card_image_is_filled_with(0xFFu);
 }
 
-static bool overwrite_existing_image_with_blank_format(const char *path) {
+static micro_sd_result_t overwrite_existing_image_with_blank_format(
+        const char *path) {
     FIL file;
     uint8_t frame[PS1_FRAME_SIZE];
     FRESULT fr;
@@ -383,7 +453,7 @@ static bool overwrite_existing_image_with_blank_format(const char *path) {
     fr = f_open(&file, path, FA_WRITE | FA_OPEN_EXISTING);
     if (fr != FR_OK) {
         printf("f_open format failed: %s %d\n", FRESULT_str(fr), fr);
-        return false;
+        return MICRO_SD_ERROR_OPEN_FAILED;
     }
 
     for (uint16_t i = 0; i < PS1_FRAME_COUNT; ++i) {
@@ -392,48 +462,57 @@ static bool overwrite_existing_image_with_blank_format(const char *path) {
         make_blank_card_frame(i, frame);
         fr = f_lseek(&file, (FSIZE_t)i * PS1_FRAME_SIZE);
 
-        if (fr == FR_OK) {
-            fr = f_write(&file, frame, sizeof(frame), &written);
+        if (fr != FR_OK) {
+            printf("blank format seek failed: frame=%u fr=%d\n", i, fr);
+            (void)f_close(&file);
+            return MICRO_SD_ERROR_SEEK_FAILED;
         }
 
+        fr = f_write(&file, frame, sizeof(frame), &written);
         if (fr != FR_OK || written != sizeof(frame)) {
             printf("blank format write failed: fr=%d written=%u\n", fr, written);
             (void)f_close(&file);
-            return false;
+            return MICRO_SD_ERROR_WRITE_FAILED;
         }
     }
 
     fr = f_sync(&file);
-
-    if (fr == FR_OK) {
-        fr = f_close(&file);
-    } else {
+    if (fr != FR_OK) {
+        printf("blank format sync failed: %s %d\n", FRESULT_str(fr), fr);
         (void)f_close(&file);
+        return MICRO_SD_ERROR_SYNC_FAILED;
     }
 
+    fr = f_close(&file);
     if (fr != FR_OK) {
-        printf("blank format sync/close failed: %s %d\n", FRESULT_str(fr), fr);
-        return false;
+        printf("blank format close failed: %s %d\n", FRESULT_str(fr), fr);
+        return MICRO_SD_ERROR_CLOSE_FAILED;
     }
 
     make_blank_card_image(card_image);
     printf("Blank card image formatted: %s\n", path);
-    return true;
+    return MICRO_SD_RESULT_OK;
 }
 
-static bool create_blank_image_at_path(const char *path) {
+static micro_sd_result_t create_blank_image_at_path(const char *path) {
     FIL file;
     uint8_t frame[PS1_FRAME_SIZE];
     FRESULT fr;
+    micro_sd_result_t result;
 
-    if (!micro_sd_mount()) {
-        return false;
+    if (path == NULL || path[0] == '\0') {
+        return MICRO_SD_ERROR_INVALID_ARGUMENT;
+    }
+
+    result = micro_sd_mount();
+    if (result != MICRO_SD_RESULT_OK) {
+        return result;
     }
 
     fr = f_open(&file, path, FA_WRITE | FA_CREATE_NEW);
     if (fr != FR_OK) {
         printf("f_open create failed: %s %d\n", FRESULT_str(fr), fr);
-        return false;
+        return MICRO_SD_ERROR_OPEN_FAILED;
     }
 
     for (uint16_t i = 0; i < PS1_FRAME_COUNT; ++i) {
@@ -446,46 +525,54 @@ static bool create_blank_image_at_path(const char *path) {
             printf("blank image write failed: fr=%d written=%u\n", fr, written);
             (void)f_close(&file);
             (void)f_unlink(path);
-            return false;
+            return MICRO_SD_ERROR_WRITE_FAILED;
         }
     }
 
     fr = f_sync(&file);
-
-    if (fr == FR_OK) {
-        fr = f_close(&file);
-    } else {
+    if (fr != FR_OK) {
+        printf("blank image sync failed: %s %d\n", FRESULT_str(fr), fr);
         (void)f_close(&file);
+        (void)f_unlink(path);
+        return MICRO_SD_ERROR_SYNC_FAILED;
     }
 
+    fr = f_close(&file);
     if (fr != FR_OK) {
-        printf("blank image sync/close failed: %s %d\n", FRESULT_str(fr), fr);
+        printf("blank image close failed: %s %d\n", FRESULT_str(fr), fr);
         (void)f_unlink(path);
-        return false;
+        return MICRO_SD_ERROR_CLOSE_FAILED;
     }
 
     printf("Blank card image created: %s\n", path);
-    return true;
+    return MICRO_SD_RESULT_OK;
 }
 
-bool micro_sd_load_or_create_initial_image(const char *path) {
+micro_sd_result_t micro_sd_load_or_create_initial_image(const char *path) {
     FILINFO info;
     FRESULT fr;
+    micro_sd_result_t result;
 
-    if (!micro_sd_mount()) {
-        return false;
+    if (path == NULL || path[0] == '\0') {
+        return MICRO_SD_ERROR_INVALID_ARGUMENT;
+    }
+
+    result = micro_sd_mount();
+    if (result != MICRO_SD_RESULT_OK) {
+        return result;
     }
 
     fr = f_stat(path, &info);
 
     if (fr == FR_NO_FILE) {
         printf("Initial image missing, creating: %s\n", path);
-        if (!create_blank_image_at_path(path)) {
-            return false;
+        result = create_blank_image_at_path(path);
+        if (result != MICRO_SD_RESULT_OK) {
+            return result;
         }
     } else if (fr != FR_OK) {
         printf("initial f_stat failed: %s %d\n", FRESULT_str(fr), fr);
-        return false;
+        return MICRO_SD_ERROR_STAT_FAILED;
     }
 
     return load_card_image_from_sd(path);
@@ -497,7 +584,6 @@ static void clear_unsynced_state(void) {
 }
 
 static void reset_fatfs_card_state(void) {
-    storage_ready = false;
     fs_mounted = false;
     (void)f_mount(NULL, "0:", 0);
 
@@ -516,6 +602,7 @@ static void reset_fatfs_card_state(void) {
 }
 
 void micro_sd_handle_card_unavailable(void) {
+    storage_result = MICRO_SD_ERROR_CARD_NOT_PRESENT;
     ps1_bus_set_card_present(false);
     ps1emu_rollback_unconfirmed_frames();
     clear_unsynced_state();
@@ -534,15 +621,21 @@ static void confirm_unsynced_frames(void) {
     clear_unsynced_state();
 }
 
-static bool open_image_for_update(FIL *file, const char *path) {
+static micro_sd_result_t open_image_for_update(FIL *file, const char *path) {
+    if (file == NULL || path == NULL || path[0] == '\0') {
+        return MICRO_SD_ERROR_INVALID_ARGUMENT;
+    }
+
     FRESULT fr = f_open(file, path, FA_WRITE | FA_OPEN_EXISTING);
 
     if (fr != FR_OK) {
         printf("f_open update failed: %s %d\n", FRESULT_str(fr), fr);
-        return false;
+        return fr == FR_NO_FILE
+                ? MICRO_SD_ERROR_FILE_NOT_FOUND
+                : MICRO_SD_ERROR_OPEN_FAILED;
     }
 
-    return true;
+    return MICRO_SD_RESULT_OK;
 }
 
 static void close_save_file_if_open(void) {
@@ -552,8 +645,8 @@ static void close_save_file_if_open(void) {
     }
 }
 
-static void storage_error_recovery(void) {
-    storage_ready = false;
+static void storage_error_recovery(micro_sd_result_t result) {
+    storage_result = result;
     ps1_bus_set_card_present(false);
     ps1emu_rollback_unconfirmed_frames();
     clear_unsynced_state();
@@ -572,27 +665,39 @@ void micro_sd_save_worker_init(const char *path) {
     memset(&save_worker, 0, sizeof(save_worker));
     save_worker.last_write_time = nil_time;
     clear_unsynced_state();
-    storage_ready = micro_sd_card_present();
+    storage_result = micro_sd_card_present()
+            ? MICRO_SD_RESULT_OK
+            : MICRO_SD_ERROR_CARD_NOT_PRESENT;
 }
 
-static bool write_next_changed_frame(bool *did_write) {
+static micro_sd_result_t write_next_changed_frame(bool *did_write) {
     uint16_t frame_addr;
     uint32_t frame_version;
+    micro_sd_result_t result;
+    ps1emu_result_t frame_result;
 
     if (did_write != NULL) {
         *did_write = false;
     }
 
-    if (!ps1emu_take_changed_frame(&frame_addr,
-                                   &frame_version,
-                                   save_frame_data)) {
-        return true;
+    frame_result = ps1emu_take_changed_frame(&frame_addr,
+                                             &frame_version,
+                                             save_frame_data);
+    if (frame_result == PS1EMU_RESULT_NO_CHANGED_FRAME) {
+        return MICRO_SD_RESULT_OK;
+    }
+
+    if (frame_result != PS1EMU_RESULT_OK) {
+        printf("Frame fetch failed: %d\n", (int)frame_result);
+        storage_error_recovery(MICRO_SD_ERROR_FRAME_FETCH_FAILED);
+        return MICRO_SD_ERROR_FRAME_FETCH_FAILED;
     }
 
     if (!save_worker.file_open) {
-        if (!open_image_for_update(&save_file, active_image_path)) {
-            storage_error_recovery();
-            return false;
+        result = open_image_for_update(&save_file, active_image_path);
+        if (result != MICRO_SD_RESULT_OK) {
+            storage_error_recovery(result);
+            return result;
         }
 
         save_worker.file_open = true;
@@ -602,15 +707,18 @@ static bool write_next_changed_frame(bool *did_write) {
     UINT written = 0;
     FRESULT fr = f_lseek(&save_file, offset);
 
-    if (fr == FR_OK) {
-        fr = f_write(&save_file, save_frame_data, PS1_FRAME_SIZE, &written);
+    if (fr != FR_OK) {
+        printf("Frame seek failed: frame=%u fr=%d\n", frame_addr, fr);
+        storage_error_recovery(MICRO_SD_ERROR_SEEK_FAILED);
+        return MICRO_SD_ERROR_SEEK_FAILED;
     }
 
+    fr = f_write(&save_file, save_frame_data, PS1_FRAME_SIZE, &written);
     if (fr != FR_OK || written != PS1_FRAME_SIZE) {
         printf("Frame write failed: frame=%u fr=%d written=%u\n",
                frame_addr, fr, written);
-        storage_error_recovery();
-        return false;
+        storage_error_recovery(MICRO_SD_ERROR_WRITE_FAILED);
+        return MICRO_SD_ERROR_WRITE_FAILED;
     }
 
     unsynced_frames[frame_addr] = true;
@@ -627,75 +735,97 @@ static bool write_next_changed_frame(bool *did_write) {
         *did_write = true;
     }
 
-    return true;
+    return MICRO_SD_RESULT_OK;
 }
 
-static bool sync_pending_frames(void) {
+static micro_sd_result_t sync_pending_frames(void) {
     FRESULT fr = FR_OK;
 
     if (!save_worker.needs_sync) {
-        close_save_file_if_open();
-        return true;
+        if (save_worker.file_open) {
+            fr = f_close(&save_file);
+            save_worker.file_open = false;
+            if (fr != FR_OK) {
+                storage_error_recovery(MICRO_SD_ERROR_CLOSE_FAILED);
+                return MICRO_SD_ERROR_CLOSE_FAILED;
+            }
+        }
+
+        return MICRO_SD_RESULT_OK;
     }
 
     if (save_worker.file_open) {
         fr = f_sync(&save_file);
-
-        if (fr == FR_OK) {
-            fr = f_close(&save_file);
-            save_worker.file_open = false;
+        if (fr != FR_OK) {
+            printf("SD sync failed: %s %d\n", FRESULT_str(fr), fr);
+            storage_error_recovery(MICRO_SD_ERROR_SYNC_FAILED);
+            return MICRO_SD_ERROR_SYNC_FAILED;
         }
-    }
 
-    if (fr != FR_OK) {
-        printf("SD sync/close failed: %s %d\n", FRESULT_str(fr), fr);
-        storage_error_recovery();
-        return false;
+        fr = f_close(&save_file);
+        save_worker.file_open = false;
+        if (fr != FR_OK) {
+            printf("SD close failed: %s %d\n", FRESULT_str(fr), fr);
+            storage_error_recovery(MICRO_SD_ERROR_CLOSE_FAILED);
+            return MICRO_SD_ERROR_CLOSE_FAILED;
+        }
     }
 
     confirm_unsynced_frames();
     save_worker.needs_sync = false;
     oled_show_ready_for_image(active_image_name);
-    return true;
+    return MICRO_SD_RESULT_OK;
 }
 
-void micro_sd_save_worker_poll(void) {
+micro_sd_result_t micro_sd_save_worker_poll(void) {
     bool did_write = false;
+    micro_sd_result_t result;
 
     if (!micro_sd_card_present()) {
         micro_sd_handle_card_unavailable();
-        return;
+        return MICRO_SD_ERROR_CARD_NOT_PRESENT;
     }
 
-    if (!write_next_changed_frame(&did_write)) {
-        return;
+    if (storage_result != MICRO_SD_RESULT_OK) {
+        return storage_result;
+    }
+
+    result = write_next_changed_frame(&did_write);
+    if (result != MICRO_SD_RESULT_OK) {
+        return result;
     }
 
     if (did_write || !save_worker.needs_sync) {
-        return;
+        return MICRO_SD_RESULT_OK;
     }
 
     int64_t idle_us = absolute_time_diff_us(save_worker.last_write_time,
                                             get_absolute_time());
 
     if (idle_us < (int64_t)SD_SYNC_IDLE_DELAY_MS * 1000) {
-        return;
+        return MICRO_SD_RESULT_OK;
     }
 
-    (void)sync_pending_frames();
+    return sync_pending_frames();
 }
 
-bool micro_sd_save_worker_flush(void) {
+micro_sd_result_t micro_sd_save_worker_flush(void) {
     while (true) {
         bool did_write = false;
+        micro_sd_result_t result;
 
         if (!micro_sd_card_present()) {
             micro_sd_handle_card_unavailable();
-            return false;
+            return MICRO_SD_ERROR_CARD_NOT_PRESENT;
         }
 
-        if (!write_next_changed_frame(&did_write)) {
-            return false;
+        if (storage_result != MICRO_SD_RESULT_OK) {
+            return storage_result;
+        }
+
+        result = write_next_changed_frame(&did_write);
+        if (result != MICRO_SD_RESULT_OK) {
+            return result;
         }
 
         if (did_write) {
@@ -706,35 +836,48 @@ bool micro_sd_save_worker_flush(void) {
     }
 }
 
-bool micro_sd_create_blank_image_auto(char out_name[MICRO_SD_IMAGE_NAME_MAX]) {
+micro_sd_result_t micro_sd_create_blank_image_auto(
+        char out_name[MICRO_SD_IMAGE_NAME_MAX]) {
     char name[MICRO_SD_IMAGE_NAME_MAX];
     char path[MICRO_SD_IMAGE_PATH_MAX];
     FILINFO info;
+    micro_sd_result_t result;
 
-    if (out_name != NULL) {
-        out_name[0] = '\0';
+    if (out_name == NULL) {
+        return MICRO_SD_ERROR_INVALID_ARGUMENT;
     }
 
-    if (!micro_sd_mount()) {
-        return false;
+    out_name[0] = '\0';
+
+    result = micro_sd_mount();
+    if (result != MICRO_SD_RESULT_OK) {
+        return result;
     }
 
     for (unsigned i = 0; i <= 999u; ++i) {
         (void)snprintf(name, sizeof(name), "CARD%03u.MCR", i);
         micro_sd_name_to_path(name, path, sizeof(path));
 
-        if (f_stat(path, &info) == FR_NO_FILE) {
-            if (!create_blank_image_at_path(path)) {
-                return false;
+        FRESULT fr = f_stat(path, &info);
+
+        if (fr == FR_NO_FILE) {
+            result = create_blank_image_at_path(path);
+            if (result != MICRO_SD_RESULT_OK) {
+                return result;
             }
 
             copy_string(out_name, MICRO_SD_IMAGE_NAME_MAX, name);
-            return true;
+            return MICRO_SD_RESULT_OK;
+        }
+
+        if (fr != FR_OK) {
+            printf("image name f_stat failed: %s %d\n", FRESULT_str(fr), fr);
+            return MICRO_SD_ERROR_STAT_FAILED;
         }
     }
 
     printf("No free CARDxxx.MCR name found\n");
-    return false;
+    return MICRO_SD_ERROR_NO_FREE_IMAGE_NAME;
 }
 
 static void sort_images(micro_sd_image_entry_t *entries, size_t count) {
@@ -757,7 +900,9 @@ size_t micro_sd_list_images(micro_sd_image_entry_t *entries, size_t max_entries)
     FRESULT fr;
     size_t count = 0;
 
-    if (entries == NULL || max_entries == 0u || !micro_sd_mount()) {
+    if (entries == NULL ||
+        max_entries == 0u ||
+        micro_sd_mount() != MICRO_SD_RESULT_OK) {
         return 0;
     }
 
@@ -844,7 +989,9 @@ size_t micro_sd_list_saves(const char *image_name,
     FRESULT fr;
     size_t count = 0;
 
-    if (entries == NULL || max_entries == 0u || !micro_sd_mount()) {
+    if (entries == NULL ||
+        max_entries == 0u ||
+        micro_sd_mount() != MICRO_SD_RESULT_OK) {
         return 0;
     }
 
@@ -902,50 +1049,61 @@ size_t micro_sd_list_saves(const char *image_name,
     return count;
 }
 
-bool micro_sd_activate_image_as_inserted_card(const char *image_name) {
+micro_sd_result_t micro_sd_activate_image_as_inserted_card(
+        const char *image_name) {
     char path[MICRO_SD_IMAGE_PATH_MAX];
-    bool ok = false;
+    micro_sd_result_t result;
+
+    if (image_name == NULL || image_name[0] == '\0') {
+        return MICRO_SD_ERROR_INVALID_ARGUMENT;
+    }
 
     micro_sd_name_to_path(image_name, path, sizeof(path));
 
     ps1_bus_request_pause_blocking();
 
-    if (micro_sd_save_worker_flush() && load_card_image_from_sd(path)) {
+    result = micro_sd_save_worker_flush();
+    if (result == MICRO_SD_RESULT_OK) {
+        result = load_card_image_from_sd(path);
+    }
+
+    if (result == MICRO_SD_RESULT_OK) {
         ps1emu_storage_state_init();
         micro_sd_save_worker_init(path);
         ps1_bus_begin_card_swap_absent();
-        ok = true;
     }
 
     ps1_bus_release_pause();
-    return ok;
+    return result;
 }
 
-static bool find_delete_fallback(const char *deleted_name,
-                                 char fallback[MICRO_SD_IMAGE_NAME_MAX]) {
+static micro_sd_result_t find_delete_fallback(
+        const char *deleted_name,
+        char fallback[MICRO_SD_IMAGE_NAME_MAX]) {
     micro_sd_image_entry_t images[MICRO_SD_MAX_IMAGES];
     size_t count = micro_sd_list_images(images, MICRO_SD_MAX_IMAGES);
 
     for (size_t i = 0; i < count; ++i) {
         if (!names_equal_ignore_case(images[i].name, deleted_name)) {
             copy_string(fallback, MICRO_SD_IMAGE_NAME_MAX, images[i].name);
-            return true;
+            return MICRO_SD_RESULT_OK;
         }
     }
 
     return micro_sd_create_blank_image_auto(fallback);
 }
 
-bool micro_sd_delete_image(const char *image_name) {
+micro_sd_result_t micro_sd_delete_image(const char *image_name) {
     char name[MICRO_SD_IMAGE_NAME_MAX];
     char path[MICRO_SD_IMAGE_PATH_MAX];
     bool was_active;
     FRESULT fr;
+    micro_sd_result_t result;
 
     copy_name_from_path(image_name, name, sizeof(name));
 
     if (name[0] == '\0') {
-        return false;
+        return MICRO_SD_ERROR_INVALID_ARGUMENT;
     }
 
     micro_sd_name_to_path(name, path, sizeof(path));
@@ -954,19 +1112,22 @@ bool micro_sd_delete_image(const char *image_name) {
     if (was_active) {
         char fallback[MICRO_SD_IMAGE_NAME_MAX];
 
-        if (!find_delete_fallback(name, fallback)) {
-            return false;
+        result = find_delete_fallback(name, fallback);
+        if (result != MICRO_SD_RESULT_OK) {
+            return result;
         }
 
-        if (!micro_sd_activate_image_as_inserted_card(fallback)) {
-            return false;
+        result = micro_sd_activate_image_as_inserted_card(fallback);
+        if (result != MICRO_SD_RESULT_OK) {
+            return result;
         }
     } else {
         ps1_bus_request_pause_blocking();
 
-        if (!micro_sd_save_worker_flush()) {
+        result = micro_sd_save_worker_flush();
+        if (result != MICRO_SD_RESULT_OK) {
             ps1_bus_release_pause();
-            return false;
+            return result;
         }
     }
 
@@ -978,9 +1139,11 @@ bool micro_sd_delete_image(const char *image_name) {
 
     if (fr != FR_OK) {
         printf("f_unlink failed: %s %d\n", FRESULT_str(fr), fr);
-        return false;
+        return fr == FR_NO_FILE
+                ? MICRO_SD_ERROR_FILE_NOT_FOUND
+                : MICRO_SD_ERROR_DELETE_FAILED;
     }
 
     printf("Deleted card image: %s\n", path);
-    return true;
+    return MICRO_SD_RESULT_OK;
 }

@@ -28,36 +28,48 @@ static inline void oled_deselect(void) {
     gpio_put(OLED_CS_PIN, 1);
 }
 
-static void oled_write_command_bytes(const uint8_t *commands, size_t count) {
+static oled_result_t oled_write_command_bytes(const uint8_t *commands,
+                                              size_t count) {
     if (commands == NULL || count == 0u) {
-        return;
+        return OLED_RESULT_OK;
     }
 
     gpio_put(OLED_DC_PIN, 0);
     oled_select();
-    (void)spi_write_blocking(OLED_SPI_PORT, commands, count);
+    int written = spi_write_blocking(OLED_SPI_PORT, commands, count);
     oled_deselect();
+    return written >= 0 && (size_t)written == count
+            ? OLED_RESULT_OK
+            : OLED_ERROR_SPI_WRITE_FAILED;
 }
 
-static void oled_write_data(const uint8_t *data, size_t count) {
+static oled_result_t oled_write_data(const uint8_t *data, size_t count) {
     if (data == NULL || count == 0u) {
-        return;
+        return OLED_RESULT_OK;
     }
 
     gpio_put(OLED_DC_PIN, 1);
     oled_select();
-    (void)spi_write_blocking(OLED_SPI_PORT, data, count);
+    int written = spi_write_blocking(OLED_SPI_PORT, data, count);
     oled_deselect();
+    return written >= 0 && (size_t)written == count
+            ? OLED_RESULT_OK
+            : OLED_ERROR_SPI_WRITE_FAILED;
 }
 
-static void oled_flush(void) {
+static oled_result_t oled_flush(void) {
     static const uint8_t set_window[] = {
         0x21, 0x00, OLED_WIDTH - 1u,
         0x22, 0x00, OLED_PAGE_COUNT - 1u,
     };
 
-    oled_write_command_bytes(set_window, sizeof(set_window));
-    oled_write_data(framebuffer, sizeof(framebuffer));
+    oled_result_t result = oled_write_command_bytes(set_window,
+                                                    sizeof(set_window));
+    if (result != OLED_RESULT_OK) {
+        return result;
+    }
+
+    return oled_write_data(framebuffer, sizeof(framebuffer));
 }
 
 static const uint8_t *glyph_for(char c) {
@@ -178,7 +190,7 @@ static void oled_show_lines(const char *line0,
     bool changed = memcmp(framebuffer,
                           last_sent_framebuffer,
                           sizeof(framebuffer)) != 0;
-    oled_flush();
+    (void)oled_flush();
 
     if (changed) {
         memcpy(last_sent_framebuffer, framebuffer, sizeof(last_sent_framebuffer));
@@ -186,11 +198,13 @@ static void oled_show_lines(const char *line0,
     }
 }
 
-bool oled_init(void) {
+oled_result_t oled_init(void) {
     oled_ready = false;
     oled_display_enabled = false;
 
-    (void)spi_init(OLED_SPI_PORT, OLED_BAUD_RATE);
+    if (spi_init(OLED_SPI_PORT, OLED_BAUD_RATE) == 0u) {
+        return OLED_ERROR_SPI_INIT_FAILED;
+    }
     spi_set_format(OLED_SPI_PORT,
                    8,
                    SPI_CPOL_0,
@@ -239,15 +253,24 @@ bool oled_init(void) {
         0xAF,             // display on
     };
 
-    oled_write_command_bytes(init_commands, sizeof(init_commands));
+    oled_result_t result = oled_write_command_bytes(init_commands,
+                                                    sizeof(init_commands));
+    if (result != OLED_RESULT_OK) {
+        return result;
+    }
+
     memset(framebuffer, 0, sizeof(framebuffer));
-    oled_flush();
+    result = oled_flush();
+    if (result != OLED_RESULT_OK) {
+        return result;
+    }
+
     memcpy(last_sent_framebuffer, framebuffer, sizeof(last_sent_framebuffer));
     oled_update_count = 0u;
 
     oled_ready = true;
     oled_display_enabled = true;
-    return true;
+    return OLED_RESULT_OK;
 }
 
 void oled_set_display_enabled(bool enabled) {
@@ -256,8 +279,9 @@ void oled_set_display_enabled(bool enabled) {
     }
 
     const uint8_t command = enabled ? 0xAF : 0xAE;
-    oled_write_command_bytes(&command, 1u);
-    oled_display_enabled = enabled;
+    if (oled_write_command_bytes(&command, 1u) == OLED_RESULT_OK) {
+        oled_display_enabled = enabled;
+    }
 }
 
 uint32_t oled_get_update_count(void) {

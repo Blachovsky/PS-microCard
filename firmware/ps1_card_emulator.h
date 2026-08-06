@@ -1,12 +1,19 @@
 #ifndef PS1_CARD_EMULATOR_H
 #define PS1_CARD_EMULATOR_H
 
-#include <stdbool.h>
 #include <stdint.h>
 
 #include "hardware_config.h"
 
 extern uint8_t card_image[PS1_CARD_SIZE];
+
+typedef enum {
+    PS1EMU_RESULT_OK = 0,
+    PS1EMU_RESULT_NO_CHANGED_FRAME,
+    PS1EMU_ERROR_INVALID_ARGUMENT,
+    PS1EMU_ERROR_FRAME_OUT_OF_RANGE,
+    PS1EMU_ERROR_SNAPSHOT_BUSY,
+} ps1emu_result_t;
 
 /*
  * Initializes the version markers shared between cores.
@@ -18,16 +25,18 @@ void ps1emu_storage_state_init(void);
  * Writes one frame into the RAM card image. This function runs only on core 0.
  * On success it wakes core 1 with SEV.
  */
-bool ps1emu_commit_frame(uint16_t frame_addr,
-                         const uint8_t data[PS1_FRAME_SIZE]);
+ps1emu_result_t ps1emu_commit_frame(
+        uint16_t frame_addr,
+        const uint8_t data[PS1_FRAME_SIZE]);
 
 /*
  * Returns a consistent copy of a frame changed since the last core 1 fetch.
  * The frame version is needed to confirm durable storage after f_sync().
  */
-bool ps1emu_take_changed_frame(uint16_t *frame_addr,
-                               uint32_t *frame_version,
-                               uint8_t data[PS1_FRAME_SIZE]);
+ps1emu_result_t ps1emu_take_changed_frame(
+        uint16_t *frame_addr,
+        uint32_t *frame_version,
+        uint8_t data[PS1_FRAME_SIZE]);
 
 /* Confirms that a specific frame version has been synced to microSD. */
 void ps1emu_confirm_frame_synced(uint16_t frame_addr,

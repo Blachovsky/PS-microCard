@@ -15,6 +15,12 @@
 #define PS1_CARD_SWAP_ABSENT_US (1500u * 1000u)
 #define PS1_CARD_SWAP_MIN_PROBES 2u
 
+typedef enum {
+    PS1_BUS_XFER_OK = 0,
+    PS1_BUS_XFER_ABORTED,
+    PS1_BUS_XFER_CLOCK_TIMEOUT,
+} ps1_bus_xfer_result_t;
+
 static volatile uint8_t ps1_mc_status = PS1_MC_STATUS_POWER_ON;
 static volatile bool ps1_card_present;
 static volatile bool ps1_pause_requested;
@@ -158,31 +164,32 @@ static void __not_in_flash_func(ps1emu_ack_pulse)(void) {
     ps1_ack_release();
 }
 
-static bool __not_in_flash_func(wait_sck_level)(int level,
-                                                uint32_t timeout_loops) {
+static ps1_bus_xfer_result_t __not_in_flash_func(wait_sck_level)(
+        int level,
+        uint32_t timeout_loops) {
     while (gpio_get(PS1_SCK_PIN) != level) {
         if (gpio_get(PS1_CS_PIN) == 1) {
-            return false;
+            return PS1_BUS_XFER_ABORTED;
         }
 
         if (--timeout_loops == 0) {
-            return false;
+            return PS1_BUS_XFER_CLOCK_TIMEOUT;
         }
 
         tight_loop_contents();
     }
 
-    return true;
+    return PS1_BUS_XFER_OK;
 }
 
 static uint8_t __not_in_flash_func(ps1emu_recv_send_byte_internal)(
         uint8_t tx,
         bool send_ack,
-        bool *ok) {
+        ps1_bus_xfer_result_t *result) {
     uint8_t rx = 0;
 
-    if (ok) {
-        *ok = false;
+    if (result != NULL) {
+        *result = PS1_BUS_XFER_ABORTED;
     }
 
     for (int bit = 0; bit < 8; ++bit) {
@@ -193,12 +200,20 @@ static uint8_t __not_in_flash_func(ps1emu_recv_send_byte_internal)(
 
         ps1_data_write_bit((tx >> bit) & 1u);
 
-        if (!wait_sck_level(0, 10000)) {
+        ps1_bus_xfer_result_t wait_result = wait_sck_level(0, 10000);
+        if (wait_result != PS1_BUS_XFER_OK) {
+            if (result != NULL) {
+                *result = wait_result;
+            }
             ps1emu_release_lines();
             return rx;
         }
 
-        if (!wait_sck_level(1, 10000)) {
+        wait_result = wait_sck_level(1, 10000);
+        if (wait_result != PS1_BUS_XFER_OK) {
+            if (result != NULL) {
+                *result = wait_result;
+            }
             ps1emu_release_lines();
             return rx;
         }
@@ -212,24 +227,27 @@ static uint8_t __not_in_flash_func(ps1emu_recv_send_byte_internal)(
         ps1emu_ack_pulse();
     }
 
-    if (ok) {
-        *ok = true;
+    if (result != NULL) {
+        *result = PS1_BUS_XFER_OK;
     }
 
     return rx;
 }
 
-static bool __not_in_flash_func(ps1emu_xfer)(uint8_t tx,
-                                             uint8_t *rx,
-                                             bool send_ack) {
-    bool ok = false;
-    uint8_t value = ps1emu_recv_send_byte_internal(tx, send_ack, &ok);
+static ps1_bus_xfer_result_t __not_in_flash_func(ps1emu_xfer)(
+        uint8_t tx,
+        uint8_t *rx,
+        bool send_ack) {
+    ps1_bus_xfer_result_t result;
+    uint8_t value = ps1emu_recv_send_byte_internal(tx,
+                                                   send_ack,
+                                                   &result);
 
     if (rx) {
         *rx = value;
     }
 
-    return ok;
+    return result;
 }
 
 static uint8_t __not_in_flash_func(ps1emu_recv_send_byte)(uint8_t tx) {
@@ -239,12 +257,12 @@ static uint8_t __not_in_flash_func(ps1emu_recv_send_byte)(uint8_t tx) {
 }
 
 static uint8_t __not_in_flash_func(ps1emu_recv_byte_no_ack)(uint8_t tx,
-                                                            bool *ok) {
+        ps1_bus_xfer_result_t *result) {
     uint8_t rx = 0;
-    bool good = ps1emu_xfer(tx, &rx, false);
+    ps1_bus_xfer_result_t xfer_result = ps1emu_xfer(tx, &rx, false);
 
-    if (ok) {
-        *ok = good;
+    if (result != NULL) {
+        *result = xfer_result;
     }
 
     return rx;
@@ -312,7 +330,7 @@ static void __not_in_flash_func(ps1emu_handle_write)(void) {
     } else if (received_checksum != calculated_checksum) {
         ps1_mc_status |= PS1_MC_STATUS_WRITE_ERR;
         result = PS1_MC_ACK_ERROR;
-    } else if (!ps1emu_commit_frame(frame_addr, data)) {
+    } else if (ps1emu_commit_frame(frame_addr, data) != PS1EMU_RESULT_OK) {
         ps1_mc_status |= PS1_MC_STATUS_WRITE_ERR;
         result = PS1_MC_ACK_ERROR;
     } else {
@@ -337,10 +355,10 @@ static void __not_in_flash_func(ps1emu_handle_status)(void) {
 }
 
 void __not_in_flash_func(ps1emu_handle_transaction)(void) {
-    bool ok;
-    uint8_t access = ps1emu_recv_byte_no_ack(0xFF, &ok);
+    ps1_bus_xfer_result_t result;
+    uint8_t access = ps1emu_recv_byte_no_ack(0xFF, &result);
 
-    if (!ok || access != 0x81) {
+    if (result != PS1_BUS_XFER_OK || access != 0x81) {
         ps1emu_release_lines();
         return;
     }
@@ -350,11 +368,11 @@ void __not_in_flash_func(ps1emu_handle_transaction)(void) {
     uint8_t status_snapshot = ps1_mc_status;
     uint8_t command = ps1emu_recv_send_byte_internal(status_snapshot,
                                                       true,
-                                                      &ok);
+                                                      &result);
 
     ps1_mc_status &= (uint8_t)~PS1_MC_STATUS_WRITE_ERR;
 
-    if (!ok) {
+    if (result != PS1_BUS_XFER_OK) {
         ps1emu_release_lines();
         return;
     }
