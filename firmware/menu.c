@@ -2,6 +2,7 @@
 
 #include "app_log.h"
 #include "menu_input.h"
+#include "menu_view.h"
 #include "micro_sd.h"
 #include "oled.h"
 #include "ps1_card_bus.h"
@@ -119,7 +120,7 @@ static void show_message(menu_screen_t return_screen,
     screen = MENU_SCREEN_MESSAGE;
     message_return_screen = return_screen;
     message_until_ms = millis_now() + MENU_MESSAGE_MS;
-    oled_show_text(line0, line1, line2, line3);
+    menu_view_show_message(line0, line1, line2, line3);
 }
 
 static void show_micro_sd_error(menu_screen_t return_screen,
@@ -134,37 +135,21 @@ static void show_micro_sd_error(menu_screen_t return_screen,
 }
 
 static void render_status(void) {
-    oled_show_ready_for_image(micro_sd_active_image_name());
+    menu_view_show_status(micro_sd_active_image_name());
 }
 
 static void render_no_card(void) {
     screen = MENU_SCREEN_NO_CARD;
-    oled_show_text("MICROSD CARD",
-                   "NOT INSERTED",
-                   "INSERT CARD",
-                   "");
+    menu_view_show_no_card();
 }
 
 static void render_card_error(void) {
     screen = MENU_SCREEN_CARD_ERROR;
-    oled_show_text("MICROSD ERROR",
-                   micro_sd_result_string(last_card_error),
-                   "REINSERT CARD",
-                   "");
+    menu_view_show_card_error(micro_sd_result_string(last_card_error));
 }
 
 static void render_main(void) {
-    char item_line[22];
-
-    (void)snprintf(item_line,
-                   sizeof(item_line),
-                   "> %s",
-                   main_items[main_index]);
-
-    oled_show_text("MENU",
-                   item_line,
-                   "L.B. NEXT R.B. OK",
-                   "HOLD R.B. BACK");
+    menu_view_show_main(main_items[main_index]);
 }
 
 static void find_active_image_index(void) {
@@ -179,32 +164,17 @@ static void find_active_image_index(void) {
 }
 
 static void render_image_browser(const char *title) {
-    char index_line[22];
-    const char *status = "";
-
     if (image_count == 0u) {
-        oled_show_text(title,
-                       "NO IMAGES",
-                       "",
-                       "HOLD R.B. BACK");
+        menu_view_show_image_browser(title, "", 0u, 0u, false);
         return;
     }
 
-    (void)snprintf(index_line,
-                   sizeof(index_line),
-                   "%02hhu/%02hhu %.12s",
-                   (unsigned)(uint8_t)(image_index + 1u),
-                   (unsigned)(uint8_t)image_count,
-                   images[image_index].name);
-
-    if (micro_sd_is_active_image(images[image_index].name)) {
-        status = "ACTIVE";
-    }
-
-    oled_show_text(title,
-                   index_line,
-                   status,
-                   "L.B. NEXT R.B. OK");
+    menu_view_show_image_browser(
+            title,
+            images[image_index].name,
+            image_index,
+            image_count,
+            micro_sd_is_active_image(images[image_index].name));
 }
 
 static void enter_select_image(void) {
@@ -215,32 +185,22 @@ static void enter_select_image(void) {
 }
 
 static void render_saves(void) {
-    char count_line[22];
-    char detail_line[22];
-
     if (save_count == 0u) {
-        oled_show_text("SAVES",
-                       "NO SAVES",
-                       micro_sd_active_image_name(),
-                       "HOLD R.B. BACK");
+        menu_view_show_saves(micro_sd_active_image_name(),
+                             "",
+                             0u,
+                             0u,
+                             0u,
+                             0u);
         return;
     }
 
-    (void)snprintf(count_line,
-                   sizeof(count_line),
-                   "SAVE %02u/%02u",
-                   (unsigned)(save_index + 1u),
-                   (unsigned)save_count);
-    (void)snprintf(detail_line,
-                   sizeof(detail_line),
-                   "SLOT %02u BLOCKS %02u",
-                   (unsigned)saves[save_index].slot,
-                   (unsigned)saves[save_index].blocks);
-
-    oled_show_text(count_line,
-                   saves[save_index].file_name,
-                   detail_line,
-                   "HOLD R.B. BACK");
+    menu_view_show_saves(micro_sd_active_image_name(),
+                         saves[save_index].file_name,
+                         saves[save_index].slot,
+                         saves[save_index].blocks,
+                         save_index,
+                         save_count);
 }
 
 static void enter_saves(void) {
@@ -270,20 +230,14 @@ static void enter_delete_image(void) {
 }
 
 static void render_delete_confirm(void) {
-    oled_show_text("DELETE IMAGE",
-                   delete_candidate,
-                   confirm_delete_yes ? "CONFIRM: YES" : "CONFIRM: NO",
-                   "L.B. TOGGLE R.B. OK");
+    menu_view_show_delete_confirm(delete_candidate, confirm_delete_yes);
 }
 
 static void create_new_image(void) {
     char new_name[MICRO_SD_IMAGE_NAME_MAX];
     micro_sd_result_t result;
 
-    oled_show_text("CREATING IMAGE",
-                   "PLEASE WAIT",
-                   "",
-                   "");
+    menu_view_show_creating_image();
 
     result = micro_sd_save_worker_flush();
     if (result != MICRO_SD_RESULT_OK) {
@@ -303,10 +257,7 @@ static void create_new_image(void) {
         return;
     }
 
-    oled_show_text("LOADING IMAGE",
-                   new_name,
-                   "PLEASE WAIT",
-                   "");
+    menu_view_show_loading_image(new_name);
 
     result = micro_sd_activate_image_as_inserted_card(new_name);
     if (result != MICRO_SD_RESULT_OK) {
@@ -331,10 +282,7 @@ static void select_current_image(void) {
         return;
     }
 
-    oled_show_text("LOADING IMAGE",
-                   images[image_index].name,
-                   "PLEASE WAIT",
-                   "");
+    menu_view_show_loading_image(images[image_index].name);
 
     result = micro_sd_activate_image_as_inserted_card(
             images[image_index].name);
@@ -355,10 +303,7 @@ static void select_current_image(void) {
 static void delete_current_image(void) {
     micro_sd_result_t result;
 
-    oled_show_text("DELETING IMAGE",
-                   delete_candidate,
-                   "PLEASE WAIT",
-                   "");
+    menu_view_show_deleting_image(delete_candidate);
 
     result = micro_sd_delete_image(delete_candidate);
     if (result == MICRO_SD_RESULT_OK) {
