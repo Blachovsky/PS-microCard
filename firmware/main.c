@@ -1,3 +1,4 @@
+#include "app_log.h"
 #include "hardware_config.h"
 #include "menu.h"
 #include "ps1_card_bus.h"
@@ -9,7 +10,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
+
+#define LOG_TAG "main"
 
 #define IMAGE_PATH "0:/CARD000.MCR"
 #define CORE1_STACK_SIZE_BYTES 8192u
@@ -74,29 +76,32 @@ static void __not_in_flash_func(ps1_bus_service_loop)(void) {
 
 int main(void) {
     stdio_init_all();
+    app_log_init();
     sleep_ms(1000);
 
-    printf("\nPS1 memory card emulator - dual core + DFR0650 OLED\n");
+    LOG_INFO(LOG_TAG,
+             "PS1 memory card emulator - dual core + DFR0650 OLED");
 
     ps1emu_gpio_init();
     ps1emu_release_lines();
     ps1emu_storage_state_init();
     ps1_bus_set_card_present(false);
 
-    printf("GPIO initialized\n");
-    printf("Initial bus state: CS=%d CLK=%d CMD=%d DATA=%d ACK=%d\n",
-           gpio_get(PS1_CS_PIN),
-           gpio_get(PS1_SCK_PIN),
-           gpio_get(PS1_CMD_PIN),
-           gpio_get(PS1_DATA_PIN),
-           gpio_get(PS1_ACK_PIN));
+    LOG_INFO(LOG_TAG, "GPIO initialized");
+    LOG_DEBUG(LOG_TAG,
+              "Initial bus state: CS=%d CLK=%d CMD=%d DATA=%d ACK=%d",
+              gpio_get(PS1_CS_PIN),
+              gpio_get(PS1_SCK_PIN),
+              gpio_get(PS1_CMD_PIN),
+              gpio_get(PS1_DATA_PIN),
+              gpio_get(PS1_ACK_PIN));
 
     multicore_launch_core1_with_stack(core1_storage_entry,
                                       core1_stack,
                                       sizeof(core1_stack));
 
-    printf("Storage worker started on core 1\n");
-    printf("Waiting for PS1 on core 0...\n");
+    LOG_INFO(LOG_TAG, "Storage worker started on core 1");
+    LOG_INFO(LOG_TAG, "Waiting for PS1 on core 0");
 
     ps1_bus_service_loop();
     return 0;

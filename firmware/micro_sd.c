@@ -1,5 +1,6 @@
 #include "micro_sd.h"
 
+#include "app_log.h"
 #include "oled.h"
 #include "ps1_card_bus.h"
 #include "ps1_card_emulator.h"
@@ -16,6 +17,7 @@
 
 #define SD_SYNC_IDLE_DELAY_MS 250u
 #define SD_RETRY_DELAY_MS     1000u
+#define LOG_TAG               "micro_sd"
 
 #define PS1_BLOCK_SIZE        (PS1_FRAME_SIZE * 64u)
 #define PS1_DIR_FRAME_COUNT   16u
@@ -172,7 +174,13 @@ static void copy_string(char *dst, size_t dst_size, const char *src) {
         src = "";
     }
 
-    (void)snprintf(dst, dst_size, "%s", src);
+    size_t length = strlen(src);
+    size_t copy_length = length < dst_size - 1u
+            ? length
+            : dst_size - 1u;
+
+    memcpy(dst, src, copy_length);
+    dst[copy_length] = '\0';
 }
 
 static void copy_name_from_path(const char *path, char *name, size_t name_size) {
@@ -246,7 +254,10 @@ static micro_sd_result_t micro_sd_mount(void) {
     FRESULT fr = f_mount(&fs, "0:", 1);
 
     if (fr != FR_OK) {
-        printf("f_mount failed: %s %d\n", FRESULT_str(fr), fr);
+        LOG_ERROR(LOG_TAG,
+                  "f_mount failed: %s (%d)",
+                  FRESULT_str(fr),
+                  fr);
         return MICRO_SD_ERROR_MOUNT_FAILED;
     }
 
@@ -349,38 +360,60 @@ static micro_sd_result_t load_card_image_from_sd(const char *path) {
 
     fr = f_stat(path, &info);
     if (fr != FR_OK) {
-        printf("f_stat failed: %s %d\n", FRESULT_str(fr), fr);
+        LOG_ERROR(LOG_TAG,
+                  "f_stat failed: path=%s, error=%s (%d)",
+                  path,
+                  FRESULT_str(fr),
+                  fr);
         return fr == FR_NO_FILE
                 ? MICRO_SD_ERROR_FILE_NOT_FOUND
                 : MICRO_SD_ERROR_STAT_FAILED;
     }
 
     if (info.fsize != PS1_CARD_SIZE) {
-        printf("Invalid card image size: %lu\n", (unsigned long)info.fsize);
+        LOG_ERROR(LOG_TAG,
+                  "Invalid card image size: path=%s, size=%lu",
+                  path,
+                  (unsigned long)info.fsize);
         return MICRO_SD_ERROR_INVALID_IMAGE_SIZE;
     }
 
     fr = f_open(&file, path, FA_READ);
     if (fr != FR_OK) {
-        printf("f_open failed: %s %d\n", FRESULT_str(fr), fr);
+        LOG_ERROR(LOG_TAG,
+                  "f_open failed: path=%s, error=%s (%d)",
+                  path,
+                  FRESULT_str(fr),
+                  fr);
         return MICRO_SD_ERROR_OPEN_FAILED;
     }
 
     fr = f_read(&file, card_image, PS1_CARD_SIZE, &read_bytes);
     if (fr != FR_OK || read_bytes != PS1_CARD_SIZE) {
-        printf("f_read failed: fr=%d read=%u\n", fr, read_bytes);
+        LOG_ERROR(LOG_TAG,
+                  "f_read failed: path=%s, error=%s (%d), read=%u",
+                  path,
+                  FRESULT_str(fr),
+                  fr,
+                  read_bytes);
         (void)f_close(&file);
         return MICRO_SD_ERROR_READ_FAILED;
     }
 
     fr = f_close(&file);
     if (fr != FR_OK) {
-        printf("f_close failed: %s %d\n", FRESULT_str(fr), fr);
+        LOG_ERROR(LOG_TAG,
+                  "f_close failed: path=%s, error=%s (%d)",
+                  path,
+                  FRESULT_str(fr),
+                  fr);
         return MICRO_SD_ERROR_CLOSE_FAILED;
     }
 
     if (card_image_is_erased_blank()) {
-        printf("Card image is erased blank, formatting: %s\n", path);
+        LOG_WARNING(LOG_TAG,
+                    "Card image is erased blank; formatting: %s",
+                    path);
 
         result = overwrite_existing_image_with_blank_format(path);
         if (result != MICRO_SD_RESULT_OK) {
@@ -389,7 +422,7 @@ static micro_sd_result_t load_card_image_from_sd(const char *path) {
     }
 
     set_active_image_path(path);
-    printf("Card image loaded: %s\n", path);
+    LOG_INFO(LOG_TAG, "Card image loaded: %s", path);
     return MICRO_SD_RESULT_OK;
 }
 
@@ -452,7 +485,11 @@ static micro_sd_result_t overwrite_existing_image_with_blank_format(
 
     fr = f_open(&file, path, FA_WRITE | FA_OPEN_EXISTING);
     if (fr != FR_OK) {
-        printf("f_open format failed: %s %d\n", FRESULT_str(fr), fr);
+        LOG_ERROR(LOG_TAG,
+                  "f_open for format failed: path=%s, error=%s (%d)",
+                  path,
+                  FRESULT_str(fr),
+                  fr);
         return MICRO_SD_ERROR_OPEN_FAILED;
     }
 
@@ -463,14 +500,27 @@ static micro_sd_result_t overwrite_existing_image_with_blank_format(
         fr = f_lseek(&file, (FSIZE_t)i * PS1_FRAME_SIZE);
 
         if (fr != FR_OK) {
-            printf("blank format seek failed: frame=%u fr=%d\n", i, fr);
+            LOG_ERROR(LOG_TAG,
+                      "Blank format seek failed: path=%s, frame=%u, "
+                      "error=%s (%d)",
+                      path,
+                      i,
+                      FRESULT_str(fr),
+                      fr);
             (void)f_close(&file);
             return MICRO_SD_ERROR_SEEK_FAILED;
         }
 
         fr = f_write(&file, frame, sizeof(frame), &written);
         if (fr != FR_OK || written != sizeof(frame)) {
-            printf("blank format write failed: fr=%d written=%u\n", fr, written);
+            LOG_ERROR(LOG_TAG,
+                      "Blank format write failed: path=%s, frame=%u, "
+                      "error=%s (%d), written=%u",
+                      path,
+                      i,
+                      FRESULT_str(fr),
+                      fr,
+                      written);
             (void)f_close(&file);
             return MICRO_SD_ERROR_WRITE_FAILED;
         }
@@ -478,19 +528,27 @@ static micro_sd_result_t overwrite_existing_image_with_blank_format(
 
     fr = f_sync(&file);
     if (fr != FR_OK) {
-        printf("blank format sync failed: %s %d\n", FRESULT_str(fr), fr);
+        LOG_ERROR(LOG_TAG,
+                  "Blank format sync failed: path=%s, error=%s (%d)",
+                  path,
+                  FRESULT_str(fr),
+                  fr);
         (void)f_close(&file);
         return MICRO_SD_ERROR_SYNC_FAILED;
     }
 
     fr = f_close(&file);
     if (fr != FR_OK) {
-        printf("blank format close failed: %s %d\n", FRESULT_str(fr), fr);
+        LOG_ERROR(LOG_TAG,
+                  "Blank format close failed: path=%s, error=%s (%d)",
+                  path,
+                  FRESULT_str(fr),
+                  fr);
         return MICRO_SD_ERROR_CLOSE_FAILED;
     }
 
     make_blank_card_image(card_image);
-    printf("Blank card image formatted: %s\n", path);
+    LOG_INFO(LOG_TAG, "Blank card image formatted: %s", path);
     return MICRO_SD_RESULT_OK;
 }
 
@@ -511,7 +569,11 @@ static micro_sd_result_t create_blank_image_at_path(const char *path) {
 
     fr = f_open(&file, path, FA_WRITE | FA_CREATE_NEW);
     if (fr != FR_OK) {
-        printf("f_open create failed: %s %d\n", FRESULT_str(fr), fr);
+        LOG_ERROR(LOG_TAG,
+                  "f_open for create failed: path=%s, error=%s (%d)",
+                  path,
+                  FRESULT_str(fr),
+                  fr);
         return MICRO_SD_ERROR_OPEN_FAILED;
     }
 
@@ -522,7 +584,14 @@ static micro_sd_result_t create_blank_image_at_path(const char *path) {
         fr = f_write(&file, frame, sizeof(frame), &written);
 
         if (fr != FR_OK || written != sizeof(frame)) {
-            printf("blank image write failed: fr=%d written=%u\n", fr, written);
+            LOG_ERROR(LOG_TAG,
+                      "Blank image write failed: path=%s, frame=%u, "
+                      "error=%s (%d), written=%u",
+                      path,
+                      i,
+                      FRESULT_str(fr),
+                      fr,
+                      written);
             (void)f_close(&file);
             (void)f_unlink(path);
             return MICRO_SD_ERROR_WRITE_FAILED;
@@ -531,7 +600,11 @@ static micro_sd_result_t create_blank_image_at_path(const char *path) {
 
     fr = f_sync(&file);
     if (fr != FR_OK) {
-        printf("blank image sync failed: %s %d\n", FRESULT_str(fr), fr);
+        LOG_ERROR(LOG_TAG,
+                  "Blank image sync failed: path=%s, error=%s (%d)",
+                  path,
+                  FRESULT_str(fr),
+                  fr);
         (void)f_close(&file);
         (void)f_unlink(path);
         return MICRO_SD_ERROR_SYNC_FAILED;
@@ -539,12 +612,16 @@ static micro_sd_result_t create_blank_image_at_path(const char *path) {
 
     fr = f_close(&file);
     if (fr != FR_OK) {
-        printf("blank image close failed: %s %d\n", FRESULT_str(fr), fr);
+        LOG_ERROR(LOG_TAG,
+                  "Blank image close failed: path=%s, error=%s (%d)",
+                  path,
+                  FRESULT_str(fr),
+                  fr);
         (void)f_unlink(path);
         return MICRO_SD_ERROR_CLOSE_FAILED;
     }
 
-    printf("Blank card image created: %s\n", path);
+    LOG_INFO(LOG_TAG, "Blank card image created: %s", path);
     return MICRO_SD_RESULT_OK;
 }
 
@@ -565,13 +642,17 @@ micro_sd_result_t micro_sd_load_or_create_initial_image(const char *path) {
     fr = f_stat(path, &info);
 
     if (fr == FR_NO_FILE) {
-        printf("Initial image missing, creating: %s\n", path);
+        LOG_INFO(LOG_TAG, "Initial image missing; creating: %s", path);
         result = create_blank_image_at_path(path);
         if (result != MICRO_SD_RESULT_OK) {
             return result;
         }
     } else if (fr != FR_OK) {
-        printf("initial f_stat failed: %s %d\n", FRESULT_str(fr), fr);
+        LOG_ERROR(LOG_TAG,
+                  "Initial f_stat failed: path=%s, error=%s (%d)",
+                  path,
+                  FRESULT_str(fr),
+                  fr);
         return MICRO_SD_ERROR_STAT_FAILED;
     }
 
@@ -629,7 +710,11 @@ static micro_sd_result_t open_image_for_update(FIL *file, const char *path) {
     FRESULT fr = f_open(file, path, FA_WRITE | FA_OPEN_EXISTING);
 
     if (fr != FR_OK) {
-        printf("f_open update failed: %s %d\n", FRESULT_str(fr), fr);
+        LOG_ERROR(LOG_TAG,
+                  "f_open for update failed: path=%s, error=%s (%d)",
+                  path,
+                  FRESULT_str(fr),
+                  fr);
         return fr == FR_NO_FILE
                 ? MICRO_SD_ERROR_FILE_NOT_FOUND
                 : MICRO_SD_ERROR_OPEN_FAILED;
@@ -688,7 +773,9 @@ static micro_sd_result_t write_next_changed_frame(bool *did_write) {
     }
 
     if (frame_result != PS1EMU_RESULT_OK) {
-        printf("Frame fetch failed: %d\n", (int)frame_result);
+        LOG_ERROR(LOG_TAG,
+                  "Frame fetch failed: result=%d",
+                  (int)frame_result);
         storage_error_recovery(MICRO_SD_ERROR_FRAME_FETCH_FAILED);
         return MICRO_SD_ERROR_FRAME_FETCH_FAILED;
     }
@@ -708,15 +795,23 @@ static micro_sd_result_t write_next_changed_frame(bool *did_write) {
     FRESULT fr = f_lseek(&save_file, offset);
 
     if (fr != FR_OK) {
-        printf("Frame seek failed: frame=%u fr=%d\n", frame_addr, fr);
+        LOG_ERROR(LOG_TAG,
+                  "Frame seek failed: frame=%u, error=%s (%d)",
+                  frame_addr,
+                  FRESULT_str(fr),
+                  fr);
         storage_error_recovery(MICRO_SD_ERROR_SEEK_FAILED);
         return MICRO_SD_ERROR_SEEK_FAILED;
     }
 
     fr = f_write(&save_file, save_frame_data, PS1_FRAME_SIZE, &written);
     if (fr != FR_OK || written != PS1_FRAME_SIZE) {
-        printf("Frame write failed: frame=%u fr=%d written=%u\n",
-               frame_addr, fr, written);
+        LOG_ERROR(LOG_TAG,
+                  "Frame write failed: frame=%u, error=%s (%d), written=%u",
+                  frame_addr,
+                  FRESULT_str(fr),
+                  fr,
+                  written);
         storage_error_recovery(MICRO_SD_ERROR_WRITE_FAILED);
         return MICRO_SD_ERROR_WRITE_FAILED;
     }
@@ -757,7 +852,10 @@ static micro_sd_result_t sync_pending_frames(void) {
     if (save_worker.file_open) {
         fr = f_sync(&save_file);
         if (fr != FR_OK) {
-            printf("SD sync failed: %s %d\n", FRESULT_str(fr), fr);
+            LOG_ERROR(LOG_TAG,
+                      "SD sync failed: error=%s (%d)",
+                      FRESULT_str(fr),
+                      fr);
             storage_error_recovery(MICRO_SD_ERROR_SYNC_FAILED);
             return MICRO_SD_ERROR_SYNC_FAILED;
         }
@@ -765,7 +863,10 @@ static micro_sd_result_t sync_pending_frames(void) {
         fr = f_close(&save_file);
         save_worker.file_open = false;
         if (fr != FR_OK) {
-            printf("SD close failed: %s %d\n", FRESULT_str(fr), fr);
+            LOG_ERROR(LOG_TAG,
+                      "SD close failed: error=%s (%d)",
+                      FRESULT_str(fr),
+                      fr);
             storage_error_recovery(MICRO_SD_ERROR_CLOSE_FAILED);
             return MICRO_SD_ERROR_CLOSE_FAILED;
         }
@@ -871,12 +972,16 @@ micro_sd_result_t micro_sd_create_blank_image_auto(
         }
 
         if (fr != FR_OK) {
-            printf("image name f_stat failed: %s %d\n", FRESULT_str(fr), fr);
+            LOG_ERROR(LOG_TAG,
+                      "Image name f_stat failed: path=%s, error=%s (%d)",
+                      path,
+                      FRESULT_str(fr),
+                      fr);
             return MICRO_SD_ERROR_STAT_FAILED;
         }
     }
 
-    printf("No free CARDxxx.MCR name found\n");
+    LOG_ERROR(LOG_TAG, "No free CARDxxx.MCR name found");
     return MICRO_SD_ERROR_NO_FREE_IMAGE_NAME;
 }
 
@@ -908,7 +1013,10 @@ size_t micro_sd_list_images(micro_sd_image_entry_t *entries, size_t max_entries)
 
     fr = f_opendir(&dir, "0:/");
     if (fr != FR_OK) {
-        printf("f_opendir failed: %s %d\n", FRESULT_str(fr), fr);
+        LOG_ERROR(LOG_TAG,
+                  "f_opendir failed: error=%s (%d)",
+                  FRESULT_str(fr),
+                  fr);
         return 0;
     }
 
@@ -999,7 +1107,11 @@ size_t micro_sd_list_saves(const char *image_name,
 
     fr = f_open(&file, path, FA_READ);
     if (fr != FR_OK) {
-        printf("f_open saves failed: %s %d\n", FRESULT_str(fr), fr);
+        LOG_ERROR(LOG_TAG,
+                  "f_open saves failed: path=%s, error=%s (%d)",
+                  path,
+                  FRESULT_str(fr),
+                  fr);
         return 0;
     }
 
@@ -1016,8 +1128,14 @@ size_t micro_sd_list_saves(const char *image_name,
         }
 
         if (fr != FR_OK || read_bytes != sizeof(frame)) {
-            printf("read save directory failed: slot=%u fr=%d read=%u\n",
-                   slot, fr, read_bytes);
+            LOG_ERROR(LOG_TAG,
+                      "Save directory read failed: path=%s, slot=%u, "
+                      "error=%s (%d), read=%u",
+                      path,
+                      slot,
+                      FRESULT_str(fr),
+                      fr,
+                      read_bytes);
             break;
         }
 
@@ -1138,12 +1256,16 @@ micro_sd_result_t micro_sd_delete_image(const char *image_name) {
     }
 
     if (fr != FR_OK) {
-        printf("f_unlink failed: %s %d\n", FRESULT_str(fr), fr);
+        LOG_ERROR(LOG_TAG,
+                  "f_unlink failed: path=%s, error=%s (%d)",
+                  path,
+                  FRESULT_str(fr),
+                  fr);
         return fr == FR_NO_FILE
                 ? MICRO_SD_ERROR_FILE_NOT_FOUND
                 : MICRO_SD_ERROR_DELETE_FAILED;
     }
 
-    printf("Deleted card image: %s\n", path);
+    LOG_INFO(LOG_TAG, "Deleted card image: %s", path);
     return MICRO_SD_RESULT_OK;
 }

@@ -30,7 +30,7 @@
 #define OLED_DC_PIN     12
 #define OLED_CS_PIN     13
 
-#define OLED_BAUD_RATE  (8 * 1000 * 1000)
+#define OLED_BAUD_RATE  (4 * 1000 * 1000)
 #define OLED_WIDTH      128
 #define OLED_HEIGHT     64
 

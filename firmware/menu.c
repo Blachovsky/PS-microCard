@@ -1,5 +1,6 @@
 #include "menu.h"
 
+#include "app_log.h"
 #include "hardware_config.h"
 #include "micro_sd.h"
 #include "oled.h"
@@ -21,6 +22,7 @@
 #define MENU_CARD_DEBOUNCE_MS 100u
 #define MENU_CARD_RETRY_MS    1000u
 #define MENU_CARD_PROBE_MS    1000u
+#define LOG_TAG               "menu"
 
 typedef enum {
     BUTTON_EVENT_NONE,
@@ -233,10 +235,6 @@ static void show_micro_sd_error(menu_screen_t return_screen,
                                 const char *operation,
                                 const char *detail,
                                 micro_sd_result_t result) {
-    printf("%s: %s (%d)\n",
-           operation,
-           micro_sd_result_string(result),
-           (int)result);
     show_message(return_screen,
                  operation,
                  detail,
@@ -533,9 +531,6 @@ static micro_sd_result_t reload_inserted_card(const char *initial_image_path) {
     result = micro_sd_load_or_create_initial_image(initial_image_path);
     if (result != MICRO_SD_RESULT_OK) {
         last_card_error = result;
-        printf("Card reload failed: %s (%d)\n",
-               micro_sd_result_string(result),
-               (int)result);
         micro_sd_handle_card_unavailable();
         render_card_error();
         return result;
@@ -734,7 +729,9 @@ void menu_task_run(const char *initial_image_path) {
         last_button_activity_ms = millis_now();
         last_oled_update_count = oled_get_update_count();
     } else {
-        printf("OLED initialization failed: %d\n", (int)oled_result);
+        LOG_ERROR(LOG_TAG,
+                  "OLED initialization failed: result=%d",
+                  (int)oled_result);
     }
 
     if (card_detect.stable_present) {
