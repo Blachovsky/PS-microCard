@@ -47,10 +47,11 @@
 // =====================
 // PS1 Memory Card pins
 // =====================
-#define PS1_SCK_PIN     2
+#define PS1_DATA_PIN    2
 #define PS1_CMD_PIN     3
-#define PS1_DATA_PIN    4
-#define PS1_CS_PIN      5
+
+#define PS1_CS_PIN      4
+#define PS1_SCK_PIN     5
 #define PS1_ACK_PIN     6
 
 #define PS1_FRAME_SIZE  128
