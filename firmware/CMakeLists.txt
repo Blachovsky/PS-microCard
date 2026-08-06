@@ -59,6 +59,8 @@ set(APP_SOURCES
     hardware_config.c
     menu.c
     menu_card_monitor.c
+    menu_controller.c
+    menu_display.c
     menu_input.c
     menu_view.c
     oled.c
