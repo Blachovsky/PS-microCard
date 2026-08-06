@@ -33,24 +33,58 @@ project(main C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
+set(SDIO_RPI2_TARGET no-OS-FatFS-SD-SDIO-SPI-RPi-Pico)
 add_subdirectory(lib/SDIO_RPI2/src)
+
+get_target_property(SDIO_RPI2_INCLUDE_DIRS
+    ${SDIO_RPI2_TARGET}
+    INTERFACE_INCLUDE_DIRECTORIES
+)
+
+if(SDIO_RPI2_INCLUDE_DIRS)
+    set_target_properties(
+        ${SDIO_RPI2_TARGET}
+        PROPERTIES
+            INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${SDIO_RPI2_INCLUDE_DIRS}"
+    )
+endif()
  
 # Can leave these off for silent mode:
 add_compile_definitions(USE_PRINTF USE_DBG_PRINTF)
 # add_compile_definitions(USE_PRINTF)
 
-
-# Add executable. Default name is the project name, version 0.1
-add_executable(
-    main 
-    main.c 
+set(APP_SOURCES
+    main.c
     hardware_config.c
     menu.c
-    oled.c 
+    oled.c
     micro_sd.c
     ps1_card_emulator.c
     ps1_card_bus.c
-    )
+)
+
+set(APP_WARNING_OPTIONS
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wformat=2
+    -Wshadow
+    -Wundef
+    -Wdouble-promotion
+    -Wstrict-prototypes
+    -Wmissing-prototypes
+    -Wold-style-definition
+)
+
+# Add executable. Default name is the project name, version 0.1
+add_executable(main ${APP_SOURCES})
+
+# Keep strict warnings on project code only; Pico SDK and submodules stay quiet.
+set_source_files_properties(
+    ${APP_SOURCES}
+    PROPERTIES
+        COMPILE_OPTIONS "${APP_WARNING_OPTIONS}"
+)
 
 pico_set_program_name(main "main")
 pico_set_program_version(main "0.1")
@@ -65,7 +99,7 @@ target_link_libraries(
     pico_stdlib
     pico_multicore
     hardware_spi
-    no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
+    ${SDIO_RPI2_TARGET}
     )
 
 # Add the standard include files to the build
@@ -74,4 +108,3 @@ target_include_directories(main PRIVATE
 )
 
 pico_add_extra_outputs(main)
-
