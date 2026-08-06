@@ -1,7 +1,7 @@
 #include "menu.h"
 
 #include "app_log.h"
-#include "hardware_config.h"
+#include "menu_input.h"
 #include "micro_sd.h"
 #include "oled.h"
 #include "ps1_card_bus.h"
@@ -15,22 +15,12 @@
 #include <stdio.h>
 
 #define MENU_POLL_MS          10u
-#define MENU_DEBOUNCE_MS      60u
-#define MENU_LONG_PRESS_MS    700u
 #define MENU_MESSAGE_MS       1400u
 #define MENU_DISPLAY_IDLE_MS  30000u
 #define MENU_CARD_DEBOUNCE_MS 100u
 #define MENU_CARD_RETRY_MS    1000u
 #define MENU_CARD_PROBE_MS    1000u
 #define LOG_TAG               "menu"
-
-typedef enum {
-    BUTTON_EVENT_NONE,
-    BUTTON_EVENT_NEXT_SHORT,
-    BUTTON_EVENT_NEXT_LONG,
-    BUTTON_EVENT_SELECT_SHORT,
-    BUTTON_EVENT_SELECT_LONG,
-} button_event_t;
 
 typedef enum {
     MENU_SCREEN_STATUS,
@@ -45,22 +35,10 @@ typedef enum {
 } menu_screen_t;
 
 typedef struct {
-    uint pin;
-    bool raw_pressed;
-    bool stable_pressed;
-    bool long_sent;
-    uint32_t raw_changed_ms;
-    uint32_t pressed_ms;
-} button_state_t;
-
-typedef struct {
     bool raw_present;
     bool stable_present;
     uint32_t raw_changed_ms;
 } card_detect_state_t;
-
-static button_state_t next_button = {.pin = MENU_NEXT_PIN};
-static button_state_t select_button = {.pin = MENU_SELECT_PIN};
 
 static menu_screen_t screen = MENU_SCREEN_STATUS;
 static menu_screen_t message_return_screen = MENU_SCREEN_STATUS;
@@ -131,93 +109,6 @@ static bool card_detect_poll(card_detect_state_t *state, bool *changed) {
     }
 
     return state->stable_present;
-}
-
-static void buttons_init(void) {
-    gpio_init(MENU_NEXT_PIN);
-    gpio_set_dir(MENU_NEXT_PIN, GPIO_IN);
-    gpio_pull_up(MENU_NEXT_PIN);
-
-    gpio_init(MENU_SELECT_PIN);
-    gpio_set_dir(MENU_SELECT_PIN, GPIO_IN);
-    gpio_pull_up(MENU_SELECT_PIN);
-
-    next_button.raw_pressed = !gpio_get(MENU_NEXT_PIN);
-    next_button.stable_pressed = next_button.raw_pressed;
-    next_button.raw_changed_ms = millis_now();
-    next_button.pressed_ms = next_button.raw_changed_ms;
-
-    select_button.raw_pressed = !gpio_get(MENU_SELECT_PIN);
-    select_button.stable_pressed = select_button.raw_pressed;
-    select_button.raw_changed_ms = next_button.raw_changed_ms;
-    select_button.pressed_ms = select_button.raw_changed_ms;
-}
-
-static bool buttons_any_pressed(void) {
-    return !gpio_get(MENU_NEXT_PIN) || !gpio_get(MENU_SELECT_PIN);
-}
-
-static void button_discard_current_press(button_state_t *button) {
-    uint32_t now = millis_now();
-    bool pressed = !gpio_get(button->pin);
-
-    button->raw_pressed = pressed;
-    button->stable_pressed = pressed;
-    button->raw_changed_ms = now;
-    button->pressed_ms = now;
-    button->long_sent = pressed;
-}
-
-static void buttons_discard_current_press(void) {
-    button_discard_current_press(&next_button);
-    button_discard_current_press(&select_button);
-}
-
-static button_event_t update_button(button_state_t *button,
-                                    button_event_t short_event,
-                                    button_event_t long_event) {
-    uint32_t now = millis_now();
-    bool raw_pressed = !gpio_get(button->pin);
-
-    if (raw_pressed != button->raw_pressed) {
-        button->raw_pressed = raw_pressed;
-        button->raw_changed_ms = now;
-    }
-
-    if (raw_pressed != button->stable_pressed &&
-        (uint32_t)(now - button->raw_changed_ms) >= MENU_DEBOUNCE_MS) {
-        button->stable_pressed = raw_pressed;
-
-        if (button->stable_pressed) {
-            button->pressed_ms = now;
-            button->long_sent = false;
-        } else if (!button->long_sent) {
-            return short_event;
-        }
-    }
-
-    if (button->stable_pressed &&
-        !button->long_sent &&
-        (uint32_t)(now - button->pressed_ms) >= MENU_LONG_PRESS_MS) {
-        button->long_sent = true;
-        return long_event;
-    }
-
-    return BUTTON_EVENT_NONE;
-}
-
-static button_event_t buttons_poll(void) {
-    button_event_t event = update_button(&next_button,
-                                         BUTTON_EVENT_NEXT_SHORT,
-                                         BUTTON_EVENT_NEXT_LONG);
-
-    if (event != BUTTON_EVENT_NONE) {
-        return event;
-    }
-
-    return update_button(&select_button,
-                         BUTTON_EVENT_SELECT_SHORT,
-                         BUTTON_EVENT_SELECT_LONG);
 }
 
 static void show_message(menu_screen_t return_screen,
@@ -604,8 +495,8 @@ static void handle_main_select(void) {
     }
 }
 
-static void handle_event(button_event_t event) {
-    if (event == BUTTON_EVENT_NONE) {
+static void handle_event(menu_input_event_t event) {
+    if (event == MENU_INPUT_EVENT_NONE) {
         return;
     }
 
@@ -615,55 +506,55 @@ static void handle_event(button_event_t event) {
 
     switch (screen) {
         case MENU_SCREEN_STATUS:
-            if (event == BUTTON_EVENT_NEXT_SHORT) {
+            if (event == MENU_INPUT_EVENT_NEXT_SHORT) {
                 enter_saves();
-            } else if (event == BUTTON_EVENT_SELECT_SHORT ||
-                       event == BUTTON_EVENT_SELECT_LONG) {
+            } else if (event == MENU_INPUT_EVENT_SELECT_SHORT ||
+                       event == MENU_INPUT_EVENT_SELECT_LONG) {
                 screen = MENU_SCREEN_MAIN;
                 render_main();
             }
             break;
 
         case MENU_SCREEN_MAIN:
-            if (event == BUTTON_EVENT_NEXT_SHORT) {
+            if (event == MENU_INPUT_EVENT_NEXT_SHORT) {
                 main_index = (uint8_t)((main_index + 1u) %
                                        (sizeof(main_items) / sizeof(main_items[0])));
                 render_main();
-            } else if (event == BUTTON_EVENT_SELECT_SHORT) {
+            } else if (event == MENU_INPUT_EVENT_SELECT_SHORT) {
                 handle_main_select();
-            } else if (event == BUTTON_EVENT_SELECT_LONG) {
+            } else if (event == MENU_INPUT_EVENT_SELECT_LONG) {
                 screen = MENU_SCREEN_STATUS;
                 render_status();
             }
             break;
 
         case MENU_SCREEN_SELECT_IMAGE:
-            if (event == BUTTON_EVENT_NEXT_SHORT && image_count > 0u) {
+            if (event == MENU_INPUT_EVENT_NEXT_SHORT && image_count > 0u) {
                 image_index = (image_index + 1u) % image_count;
                 render_image_browser("SELECT IMAGE");
-            } else if (event == BUTTON_EVENT_SELECT_SHORT) {
+            } else if (event == MENU_INPUT_EVENT_SELECT_SHORT) {
                 select_current_image();
-            } else if (event == BUTTON_EVENT_SELECT_LONG) {
+            } else if (event == MENU_INPUT_EVENT_SELECT_LONG) {
                 screen = MENU_SCREEN_MAIN;
                 render_main();
             }
             break;
 
         case MENU_SCREEN_SAVES:
-            if (event == BUTTON_EVENT_NEXT_SHORT && save_count > 0u) {
+            if (event == MENU_INPUT_EVENT_NEXT_SHORT && save_count > 0u) {
                 save_index = (save_index + 1u) % save_count;
                 render_saves();
-            } else if (event == BUTTON_EVENT_SELECT_LONG) {
+            } else if (event == MENU_INPUT_EVENT_SELECT_LONG) {
                 screen = MENU_SCREEN_MAIN;
                 render_main();
             }
             break;
 
         case MENU_SCREEN_DELETE_IMAGE:
-            if (event == BUTTON_EVENT_NEXT_SHORT && image_count > 0u) {
+            if (event == MENU_INPUT_EVENT_NEXT_SHORT && image_count > 0u) {
                 image_index = (image_index + 1u) % image_count;
                 render_image_browser("DELETE IMAGE");
-            } else if (event == BUTTON_EVENT_SELECT_SHORT && image_count > 0u) {
+            } else if (event == MENU_INPUT_EVENT_SELECT_SHORT && image_count > 0u) {
                 (void)snprintf(delete_candidate,
                                sizeof(delete_candidate),
                                "%s",
@@ -671,24 +562,24 @@ static void handle_event(button_event_t event) {
                 confirm_delete_yes = false;
                 screen = MENU_SCREEN_DELETE_CONFIRM;
                 render_delete_confirm();
-            } else if (event == BUTTON_EVENT_SELECT_LONG) {
+            } else if (event == MENU_INPUT_EVENT_SELECT_LONG) {
                 screen = MENU_SCREEN_MAIN;
                 render_main();
             }
             break;
 
         case MENU_SCREEN_DELETE_CONFIRM:
-            if (event == BUTTON_EVENT_NEXT_SHORT) {
+            if (event == MENU_INPUT_EVENT_NEXT_SHORT) {
                 confirm_delete_yes = !confirm_delete_yes;
                 render_delete_confirm();
-            } else if (event == BUTTON_EVENT_SELECT_SHORT) {
+            } else if (event == MENU_INPUT_EVENT_SELECT_SHORT) {
                 if (confirm_delete_yes) {
                     delete_current_image();
                 } else {
                     screen = MENU_SCREEN_DELETE_IMAGE;
                     render_image_browser("DELETE IMAGE");
                 }
-            } else if (event == BUTTON_EVENT_SELECT_LONG) {
+            } else if (event == MENU_INPUT_EVENT_SELECT_LONG) {
                 screen = MENU_SCREEN_DELETE_IMAGE;
                 render_image_browser("DELETE IMAGE");
             }
@@ -715,7 +606,7 @@ void menu_task_run(const char *initial_image_path) {
     uint32_t last_oled_update_count = 0u;
     micro_sd_result_t result;
 
-    buttons_init();
+    menu_input_init();
     micro_sd_card_detect_init();
     card_detect_state_init(&card_detect);
     micro_sd_save_worker_init(initial_image_path);
@@ -845,9 +736,9 @@ void menu_task_run(const char *initial_image_path) {
             }
         }
 
-        button_event_t event = buttons_poll();
-        bool button_pressed = buttons_any_pressed();
-        bool button_activity = button_pressed || event != BUTTON_EVENT_NONE;
+        menu_input_event_t event = menu_input_poll();
+        bool button_pressed = menu_input_any_pressed();
+        bool button_activity = button_pressed || event != MENU_INPUT_EVENT_NONE;
         bool handle_buttons = card_ready;
 
         if (oled_ok) {
@@ -857,9 +748,9 @@ void menu_task_run(const char *initial_image_path) {
                 if (!display_awake) {
                     oled_set_display_enabled(true);
                     display_awake = true;
-                    buttons_discard_current_press();
-                    event = BUTTON_EVENT_NONE;
-                    button_pressed = buttons_any_pressed();
+                    menu_input_discard_current_press();
+                    event = MENU_INPUT_EVENT_NONE;
+                    button_pressed = menu_input_any_pressed();
                     ignore_buttons_until_release = true;
                     render_current_screen();
                 }
@@ -879,7 +770,7 @@ void menu_task_run(const char *initial_image_path) {
         if (handle_buttons && card_ready) {
             handle_event(event);
 
-            if (oled_ok && display_awake && event != BUTTON_EVENT_NONE) {
+            if (oled_ok && display_awake && event != MENU_INPUT_EVENT_NONE) {
                 last_button_activity_ms = millis_now();
             }
         }
@@ -905,8 +796,8 @@ void menu_task_run(const char *initial_image_path) {
                     oled_set_display_enabled(true);
                     display_awake = true;
 
-                    if (buttons_any_pressed()) {
-                        buttons_discard_current_press();
+                    if (menu_input_any_pressed()) {
+                        menu_input_discard_current_press();
                         ignore_buttons_until_release = true;
                     }
                 }

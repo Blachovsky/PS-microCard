@@ -58,6 +58,7 @@ set(APP_SOURCES
     main.c
     hardware_config.c
     menu.c
+    menu_input.c
     oled.c
     oled_font.c
     micro_sd.c
