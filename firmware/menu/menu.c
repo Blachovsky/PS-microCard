@@ -1,6 +1,6 @@
 #include "menu/menu.h"
 
-#include "app/app_log.h"
+#include "logger/app_log.h"
 #include "menu/menu_controller.h"
 #include "menu/menu_display.h"
 #include "menu/menu_input.h"

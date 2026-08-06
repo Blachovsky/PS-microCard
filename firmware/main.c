@@ -1,4 +1,4 @@
-#include "app/app_log.h"
+#include "logger/app_log.h"
 #include "board/hardware_config.h"
 #include "menu/menu.h"
 #include "ps1/ps1_card_bus.h"

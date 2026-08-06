@@ -54,8 +54,8 @@ add_compile_definitions(USE_PRINTF USE_DBG_PRINTF)
 # add_compile_definitions(USE_PRINTF)
 
 set(APP_SOURCES
-    app/app_log.c
-    app/main.c
+    logger/app_log.c
+    main.c
     board/hardware_config.c
     menu/menu.c
     menu/menu_controller.c

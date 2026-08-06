@@ -2,7 +2,7 @@
 
 #include "storage/micro_sd_internal.h"
 
-#include "app/app_log.h"
+#include "logger/app_log.h"
 #include "ps1/ps1_card_bus.h"
 #include "ps1/ps1_card_emulator.h"
 

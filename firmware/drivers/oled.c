@@ -1,6 +1,6 @@
 #include "drivers/oled.h"
 
-#include "app/app_log.h"
+#include "logger/app_log.h"
 #include "board/hardware_config.h"
 #include "drivers/oled_font.h"
 
