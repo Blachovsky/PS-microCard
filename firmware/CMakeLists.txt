@@ -58,11 +58,10 @@ set(APP_SOURCES
     main.c
     hardware_config.c
     menu.c
-    menu_card_monitor.c
     menu_controller.c
     menu_display.c
     menu_input.c
-    menu_view.c
+    menu_storage.c
     oled.c
     oled_font.c
     micro_sd.c

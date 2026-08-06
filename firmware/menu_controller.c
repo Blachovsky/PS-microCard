@@ -1,6 +1,7 @@
 #include "menu_controller.h"
 
-#include "menu_view.h"
+#include "menu_display.h"
+#include "menu_storage.h"
 
 #include "pico/stdlib.h"
 
@@ -9,6 +10,8 @@
 #include <stdio.h>
 
 #define MENU_MESSAGE_MS 1400u
+
+/* Menu state and screen data. */
 
 typedef enum {
     MENU_SCREEN_STATUS,
@@ -46,6 +49,8 @@ static const char *const main_items[] = {
     "EXIT",
 };
 
+/* Timing and transient messages. */
+
 static uint32_t menu_controller_millis_now(void) {
     return to_ms_since_boot(get_absolute_time());
 }
@@ -62,7 +67,7 @@ static void show_message(menu_screen_t return_screen,
     screen = MENU_SCREEN_MESSAGE;
     message_return_screen = return_screen;
     message_until_ms = menu_controller_millis_now() + MENU_MESSAGE_MS;
-    menu_view_show_message(line0, line1, line2, line3);
+    menu_display_show_message(line0, line1, line2, line3);
 }
 
 static void show_micro_sd_error(menu_screen_t return_screen,
@@ -76,12 +81,14 @@ static void show_micro_sd_error(menu_screen_t return_screen,
                  "");
 }
 
+/* Screen rendering and list preparation. */
+
 static void render_status(void) {
-    menu_view_show_status(micro_sd_active_image_name());
+    menu_display_show_status(micro_sd_active_image_name());
 }
 
 static void render_main(void) {
-    menu_view_show_main(main_items[main_index]);
+    menu_display_show_main(main_items[main_index]);
 }
 
 static void find_active_image_index(void) {
@@ -97,11 +104,11 @@ static void find_active_image_index(void) {
 
 static void render_image_browser(const char *title) {
     if (image_count == 0u) {
-        menu_view_show_image_browser(title, "", 0u, 0u, false);
+        menu_display_show_image_browser(title, "", 0u, 0u, false);
         return;
     }
 
-    menu_view_show_image_browser(
+    menu_display_show_image_browser(
             title,
             images[image_index].name,
             image_index,
@@ -118,31 +125,31 @@ static void enter_select_image(void) {
 
 static void render_saves(void) {
     if (save_count == 0u) {
-        menu_view_show_saves(micro_sd_active_image_name(),
-                             "",
-                             0u,
-                             0u,
-                             0u,
-                             0u);
+        menu_display_show_saves(micro_sd_active_image_name(),
+                                "",
+                                0u,
+                                0u,
+                                0u,
+                                0u);
         return;
     }
 
-    menu_view_show_saves(micro_sd_active_image_name(),
-                         saves[save_index].file_name,
-                         saves[save_index].slot,
-                         saves[save_index].blocks,
-                         save_index,
-                         save_count);
+    menu_display_show_saves(micro_sd_active_image_name(),
+                            saves[save_index].file_name,
+                            saves[save_index].slot,
+                            saves[save_index].blocks,
+                            save_index,
+                            save_count);
 }
 
 static void enter_saves(void) {
-    micro_sd_result_t result = micro_sd_save_worker_flush();
+    menu_storage_action_result_t result = menu_storage_prepare_saves();
 
-    if (result != MICRO_SD_RESULT_OK) {
+    if (result.code != MENU_STORAGE_ACTION_OK) {
         show_micro_sd_error(MENU_SCREEN_MAIN,
                             "READ SAVES FAILED",
                             micro_sd_active_image_name(),
-                            result);
+                            result.cause);
         return;
     }
 
@@ -162,41 +169,38 @@ static void enter_delete_image(void) {
 }
 
 static void render_delete_confirm(void) {
-    menu_view_show_delete_confirm(delete_candidate, confirm_delete_yes);
+    menu_display_show_delete_confirm(delete_candidate, confirm_delete_yes);
 }
+
+/* Storage-backed user actions. */
 
 static void create_new_image(void) {
     char new_name[MICRO_SD_IMAGE_NAME_MAX];
-    micro_sd_result_t result;
+    menu_storage_action_result_t result;
 
-    menu_view_show_creating_image();
+    menu_display_show_creating_image();
 
-    result = micro_sd_save_worker_flush();
-    if (result != MICRO_SD_RESULT_OK) {
+    result = menu_storage_create_image(new_name);
+    if (result.code != MENU_STORAGE_ACTION_OK) {
+        const char *detail = result.code == MENU_STORAGE_ACTION_ERROR_FLUSH
+                ? "FLUSH ACTIVE IMAGE"
+                : "CHECK MICROSD";
+
         show_micro_sd_error(MENU_SCREEN_MAIN,
                             "CREATE FAILED",
-                            "FLUSH ACTIVE IMAGE",
-                            result);
+                            detail,
+                            result.cause);
         return;
     }
 
-    result = micro_sd_create_blank_image_auto(new_name);
-    if (result != MICRO_SD_RESULT_OK) {
-        show_micro_sd_error(MENU_SCREEN_MAIN,
-                            "CREATE FAILED",
-                            "CHECK MICROSD",
-                            result);
-        return;
-    }
+    menu_display_show_loading_image(new_name);
 
-    menu_view_show_loading_image(new_name);
-
-    result = micro_sd_activate_image_as_inserted_card(new_name);
-    if (result != MICRO_SD_RESULT_OK) {
+    result = menu_storage_activate_image(new_name);
+    if (result.code != MENU_STORAGE_ACTION_OK) {
         show_micro_sd_error(MENU_SCREEN_MAIN,
                             "LOAD FAILED",
                             new_name,
-                            result);
+                            result.cause);
         return;
     }
 
@@ -208,17 +212,16 @@ static void create_new_image(void) {
 }
 
 static void select_current_image(void) {
-    micro_sd_result_t result;
+    menu_storage_action_result_t result;
 
     if (image_count == 0u) {
         return;
     }
 
-    menu_view_show_loading_image(images[image_index].name);
+    menu_display_show_loading_image(images[image_index].name);
 
-    result = micro_sd_activate_image_as_inserted_card(
-            images[image_index].name);
-    if (result == MICRO_SD_RESULT_OK) {
+    result = menu_storage_activate_image(images[image_index].name);
+    if (result.code == MENU_STORAGE_ACTION_OK) {
         show_message(MENU_SCREEN_STATUS,
                      "SELECTED",
                      images[image_index].name,
@@ -228,17 +231,17 @@ static void select_current_image(void) {
         show_micro_sd_error(MENU_SCREEN_SELECT_IMAGE,
                             "LOAD FAILED",
                             images[image_index].name,
-                            result);
+                            result.cause);
     }
 }
 
 static void delete_current_image(void) {
-    micro_sd_result_t result;
+    menu_storage_action_result_t result;
 
-    menu_view_show_deleting_image(delete_candidate);
+    menu_display_show_deleting_image(delete_candidate);
 
-    result = micro_sd_delete_image(delete_candidate);
-    if (result == MICRO_SD_RESULT_OK) {
+    result = menu_storage_delete_image(delete_candidate);
+    if (result.code == MENU_STORAGE_ACTION_OK) {
         show_message(MENU_SCREEN_STATUS,
                      "DELETED",
                      delete_candidate,
@@ -248,9 +251,11 @@ static void delete_current_image(void) {
         show_micro_sd_error(MENU_SCREEN_DELETE_IMAGE,
                             "DELETE FAILED",
                             delete_candidate,
-                            result);
+                            result.cause);
     }
 }
+
+/* Public screen-state API. */
 
 void menu_controller_init(void) {
     screen = MENU_SCREEN_STATUS;
@@ -274,13 +279,13 @@ void menu_controller_show_status(void) {
 
 void menu_controller_show_no_card(void) {
     screen = MENU_SCREEN_NO_CARD;
-    menu_view_show_no_card();
+    menu_display_show_no_card();
 }
 
 void menu_controller_show_card_error(micro_sd_result_t result) {
     last_card_error = result;
     screen = MENU_SCREEN_CARD_ERROR;
-    menu_view_show_card_error(micro_sd_result_string(last_card_error));
+    menu_display_show_card_error(micro_sd_result_string(last_card_error));
 }
 
 void menu_controller_render_current(void) {
@@ -309,12 +314,14 @@ void menu_controller_render_current(void) {
             menu_controller_show_no_card();
             break;
         case MENU_SCREEN_CARD_ERROR:
-            menu_view_show_card_error(micro_sd_result_string(last_card_error));
+            menu_display_show_card_error(micro_sd_result_string(last_card_error));
             break;
         default:
             break;
     }
 }
+
+/* Navigation and input-event handling. */
 
 static void handle_main_select(void) {
     switch (main_index) {
