@@ -41,6 +41,7 @@ typedef struct {
     FRESULT sync_result;
     FRESULT close_result;
     UINT write_count;
+    uint32_t write_error_on_call;
     bool remove_card_when_frame_taken;
     bool remove_card_after_seek;
     bool remove_card_after_write;
@@ -56,6 +57,7 @@ typedef struct {
 const absolute_time_t nil_time = {.us_since_boot = 0};
 
 static queued_frame_t frame_queue[FRAME_QUEUE_CAPACITY];
+static bool frame_confirmed[FRAME_QUEUE_CAPACITY];
 static size_t frame_queue_count;
 static size_t frame_queue_position;
 static failure_control_t failure;
@@ -127,6 +129,7 @@ static void queue_frame(uint16_t addr, uint32_t version, uint8_t seed) {
 
 static void reset_fixture(void) {
     memset(frame_queue, 0, sizeof(frame_queue));
+    memset(frame_confirmed, 0, sizeof(frame_confirmed));
     memset(&failure, 0, sizeof(failure));
     memset(events, 0, sizeof(events));
     memset(write_records, 0, sizeof(write_records));
@@ -220,7 +223,9 @@ FRESULT f_write(FIL *file,
     ++write_count;
     record_event(EVENT_WRITE);
 
-    if (failure.write_result != FR_OK) {
+    if (failure.write_result != FR_OK
+            && (failure.write_error_on_call == 0u
+                || write_count == failure.write_error_on_call)) {
         *written = 0u;
         return failure.write_result;
     }
@@ -297,6 +302,11 @@ const char *FRESULT_str(FRESULT result) {
 int ps1emu_take_changed_frame(uint16_t *frame_addr,
                               uint32_t *frame_version,
                               uint8_t data[PS1_FRAME_SIZE]) {
+    while (frame_queue_position < frame_queue_count
+            && frame_confirmed[frame_queue_position]) {
+        ++frame_queue_position;
+    }
+
     if (frame_queue_position >= frame_queue_count) {
         return TEST_PS1EMU_RESULT_NO_CHANGED_FRAME;
     }
@@ -319,11 +329,21 @@ void ps1emu_confirm_frame_synced(uint16_t frame_addr,
     confirmed_addr[confirm_count] = frame_addr;
     confirmed_version[confirm_count] = frame_version;
     ++confirm_count;
+
+    for (size_t i = 0u; i < frame_queue_count; ++i) {
+        if (frame_queue[i].addr == frame_addr
+                && frame_queue[i].version == frame_version) {
+            frame_confirmed[i] = true;
+            break;
+        }
+    }
+
     record_event(EVENT_CONFIRM);
 }
 
 void ps1emu_rollback_unconfirmed_frames(void) {
     ++rollback_count;
+    frame_queue_position = 0u;
 }
 
 bool micro_sd_card_present(void) {
@@ -649,4 +669,109 @@ void test_card_removed_during_close_does_not_confirm_frame(void) {
     TEST_ASSERT_EQUAL_UINT32(1u, close_count);
     TEST_ASSERT_FALSE(card_present);
     assert_standard_recovery(MICRO_SD_ERROR_CLOSE_FAILED);
+}
+
+void test_failed_write_is_retried_after_card_reconnect_and_then_confirmed(
+        void) {
+    queue_frame(21u, 31u, 0x71u);
+    failure.write_result = FR_DISK_ERR;
+
+    TEST_ASSERT_EQUAL_INT(MICRO_SD_ERROR_WRITE_FAILED,
+                          micro_sd_save_worker_flush());
+    TEST_ASSERT_EQUAL_UINT32(0u, confirm_count);
+    TEST_ASSERT_EQUAL_UINT32(1u, rollback_count);
+
+    card_present = false;
+    card_present = true;
+    failure.write_result = FR_OK;
+    micro_sd_save_worker_init(active_path);
+
+    TEST_ASSERT_EQUAL_INT(MICRO_SD_RESULT_OK,
+                          micro_sd_save_worker_flush());
+    TEST_ASSERT_EQUAL_UINT32(2u, write_count);
+    TEST_ASSERT_EQUAL_UINT32(1u, sync_count);
+    TEST_ASSERT_EQUAL_UINT32(1u, confirm_count);
+    TEST_ASSERT_EQUAL_UINT16(21u, confirmed_addr[0]);
+    TEST_ASSERT_EQUAL_UINT32(31u, confirmed_version[0]);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(
+            frame_queue[0].data,
+            &disk_image[(size_t)21u * PS1_FRAME_SIZE],
+            PS1_FRAME_SIZE);
+}
+
+void test_reconnect_retries_several_frames_left_pending_by_failure(void) {
+    const uint16_t addresses[] = {2u, 22u, 222u};
+
+    for (size_t i = 0u; i < 3u; ++i) {
+        queue_frame(addresses[i],
+                    (uint32_t)(40u + i),
+                    (uint8_t)(0x80u + i));
+    }
+
+    failure.write_result = FR_DISK_ERR;
+    TEST_ASSERT_EQUAL_INT(MICRO_SD_ERROR_WRITE_FAILED,
+                          micro_sd_save_worker_flush());
+    TEST_ASSERT_EQUAL_UINT32(0u, confirm_count);
+    TEST_ASSERT_EQUAL_UINT32(1u, rollback_count);
+
+    failure.write_result = FR_OK;
+    card_present = true;
+    micro_sd_save_worker_init(active_path);
+
+    TEST_ASSERT_EQUAL_INT(MICRO_SD_RESULT_OK,
+                          micro_sd_save_worker_flush());
+    TEST_ASSERT_EQUAL_UINT32(4u, write_count);
+    TEST_ASSERT_EQUAL_UINT32(3u, write_record_count);
+    TEST_ASSERT_EQUAL_UINT32(1u, sync_count);
+    TEST_ASSERT_EQUAL_UINT32(3u, confirm_count);
+
+    for (size_t i = 0u; i < 3u; ++i) {
+        TEST_ASSERT_EQUAL_UINT16(addresses[i], confirmed_addr[i]);
+        TEST_ASSERT_EQUAL_UINT8_ARRAY(
+                frame_queue[i].data,
+                &disk_image[(size_t)addresses[i] * PS1_FRAME_SIZE],
+                PS1_FRAME_SIZE);
+    }
+}
+
+void test_failure_after_partial_batch_replays_all_unconfirmed_frames(void) {
+    const uint16_t addresses[] = {3u, 33u, 333u, 999u};
+
+    for (size_t i = 0u; i < 4u; ++i) {
+        queue_frame(addresses[i],
+                    (uint32_t)(50u + i),
+                    (uint8_t)(0x90u + i));
+    }
+
+    failure.write_result = FR_DISK_ERR;
+    failure.write_error_on_call = 3u;
+
+    TEST_ASSERT_EQUAL_INT(MICRO_SD_ERROR_WRITE_FAILED,
+                          micro_sd_save_worker_flush());
+    TEST_ASSERT_EQUAL_UINT32(3u, write_count);
+    TEST_ASSERT_EQUAL_UINT32(2u, write_record_count);
+    TEST_ASSERT_EQUAL_UINT32(0u, sync_count);
+    TEST_ASSERT_EQUAL_UINT32(0u, confirm_count);
+    TEST_ASSERT_EQUAL_UINT32(1u, rollback_count);
+
+    failure.write_result = FR_OK;
+    failure.write_error_on_call = 0u;
+    card_present = true;
+    micro_sd_save_worker_init(active_path);
+
+    TEST_ASSERT_EQUAL_INT(MICRO_SD_RESULT_OK,
+                          micro_sd_save_worker_flush());
+    TEST_ASSERT_EQUAL_UINT32(7u, write_count);
+    TEST_ASSERT_EQUAL_UINT32(6u, write_record_count);
+    TEST_ASSERT_EQUAL_UINT32(1u, sync_count);
+    TEST_ASSERT_EQUAL_UINT32(4u, confirm_count);
+
+    for (size_t i = 0u; i < 4u; ++i) {
+        TEST_ASSERT_EQUAL_UINT16(addresses[i], confirmed_addr[i]);
+        TEST_ASSERT_EQUAL_UINT32(50u + i, confirmed_version[i]);
+        TEST_ASSERT_EQUAL_UINT8_ARRAY(
+                frame_queue[i].data,
+                &disk_image[(size_t)addresses[i] * PS1_FRAME_SIZE],
+                PS1_FRAME_SIZE);
+    }
 }
