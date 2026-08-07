@@ -1,6 +1,6 @@
-#include "storage/micro_sd.h"
+#include "micro_sd/micro_sd.h"
 
-#include "storage/micro_sd_internal.h"
+#include "micro_sd/micro_sd_internal.h"
 
 #include "logger/app_log.h"
 #include "drivers/oled.h"

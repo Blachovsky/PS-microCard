@@ -62,9 +62,9 @@ set(APP_SOURCES
     menu/menu_display.c
     menu/menu_input.c
     menu/menu_storage.c
-    storage/micro_sd.c
-    storage/micro_sd_image.c
-    storage/micro_sd_worker.c
+    micro_sd/micro_sd.c
+    micro_sd/micro_sd_image.c
+    micro_sd/micro_sd_worker.c
     ps1/ps1_card_emulator.c
     ps1/ps1_card_bus.c
     drivers/oled.c

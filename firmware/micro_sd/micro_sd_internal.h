@@ -1,7 +1,7 @@
 #ifndef MICRO_SD_INTERNAL_H
 #define MICRO_SD_INTERNAL_H
 
-#include "storage/micro_sd.h"
+#include "micro_sd/micro_sd.h"
 
 #include <stddef.h>
 

@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "board/hardware_config.h"
+#include "ps1/ps1_card_geometry.h"
 
 extern uint8_t card_image[PS1_CARD_SIZE];
 

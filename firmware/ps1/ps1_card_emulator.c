@@ -1,5 +1,6 @@
 #include "ps1/ps1_card_emulator.h"
 
+#include "hardware/sync.h"
 #include "pico/stdlib.h"
 
 #include <stddef.h>

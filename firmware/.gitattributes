@@ -19,6 +19,9 @@ CMakeLists.txt text eol=lf
 *.yml     text eol=lf
 *.yaml    text eol=lf
 .gitignore text eol=lf
+.gitattributes text eol=lf
+tests/Gemfile text eol=lf
+tests/Gemfile.lock text eol=lf
 
 # Windows scripts, if added later.
 *.bat     text eol=crlf

@@ -5,6 +5,7 @@
 
 #include <stddef.h>
 
+#include "ps1/ps1_card_geometry.h"
 #include "sd_card.h"
 
 // =====================
@@ -55,10 +56,6 @@
 #define PS1_CS_PIN      4
 #define PS1_SCK_PIN     5
 #define PS1_ACK_PIN     6
-
-#define PS1_FRAME_SIZE  128
-#define PS1_FRAME_COUNT 1024
-#define PS1_CARD_SIZE   (PS1_FRAME_COUNT * PS1_FRAME_SIZE)
 
 #define PS1_ACK_PULSE_US     3
 #define PS1_SAMPLE_DELAY_US  2

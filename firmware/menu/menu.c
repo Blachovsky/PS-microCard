@@ -7,7 +7,7 @@
 #include "menu/menu_storage.h"
 #include "ps1/ps1_card_bus.h"
 #include "ps1/ps1_card_emulator.h"
-#include "storage/micro_sd.h"
+#include "micro_sd/micro_sd.h"
 
 #include "pico/stdlib.h"
 
