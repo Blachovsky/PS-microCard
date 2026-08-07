@@ -17,6 +17,8 @@ typedef enum {
     FR_INVALID_NAME,
     FR_DENIED,
     FR_EXIST,
+    FR_INVALID_OBJECT,
+    FR_WRITE_PROTECTED,
 } FRESULT;
 
 typedef struct {
@@ -49,6 +51,7 @@ typedef struct {
 FRESULT f_stat(const char *path, FILINFO *info);
 FRESULT f_open(FIL *file, const char *path, BYTE mode);
 FRESULT f_read(FIL *file, void *data, UINT count, UINT *read_count);
+FSIZE_t f_size(FIL *file);
 FRESULT f_write(FIL *file,
                 const void *data,
                 UINT count,
