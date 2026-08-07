@@ -48,6 +48,12 @@ void ps1emu_confirm_frame_synced(uint16_t frame_addr,
  */
 void ps1emu_rollback_unconfirmed_frames(void);
 
+#ifdef UNIT_TEST
+/* Seeds a consistent, already-synced version for wraparound tests. */
+void ps1emu_test_seed_frame_version(uint16_t frame_addr,
+                                    uint32_t frame_version);
+#endif
+
 uint8_t *get_frame_ptr(uint16_t frame_addr);
 uint8_t ps1_frame_checksum(uint16_t frame_addr,
                            const uint8_t data[PS1_FRAME_SIZE]);

@@ -179,6 +179,21 @@ void ps1emu_rollback_unconfirmed_frames(void) {
     __sev();
 }
 
+#ifdef UNIT_TEST
+void ps1emu_test_seed_frame_version(uint16_t frame_addr,
+                                    uint32_t frame_version) {
+    if (frame_addr >= PS1_FRAME_COUNT) {
+        return;
+    }
+
+    __atomic_store_n(&frame_sequence[frame_addr],
+                     frame_version,
+                     __ATOMIC_RELAXED);
+    observed_sequence[frame_addr] = frame_version;
+    confirmed_sequence[frame_addr] = frame_version;
+}
+#endif
+
 uint8_t __not_in_flash_func(ps1_frame_checksum)(
         uint16_t frame_addr,
         const uint8_t data[PS1_FRAME_SIZE]) {
