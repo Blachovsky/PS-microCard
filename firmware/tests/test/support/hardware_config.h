@@ -1,0 +1,12 @@
+#ifndef TEST_SUPPORT_HARDWARE_CONFIG_H
+#define TEST_SUPPORT_HARDWARE_CONFIG_H
+
+#define PS1_DATA_PIN 2u
+#define PS1_CMD_PIN  3u
+#define PS1_CS_PIN   4u
+#define PS1_SCK_PIN  5u
+#define PS1_ACK_PIN  6u
+
+#define PS1_ACK_PULSE_US 3u
+
+#endif // TEST_SUPPORT_HARDWARE_CONFIG_H
