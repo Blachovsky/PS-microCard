@@ -422,6 +422,10 @@ void ps1_bus_begin_card_swap_absent(void) {
     ++swap_count;
 }
 
+void ps1_bus_set_card_present(bool present) {
+    (void)present;
+}
+
 void ps1emu_storage_state_init(void) {
     ++storage_init_count;
 }

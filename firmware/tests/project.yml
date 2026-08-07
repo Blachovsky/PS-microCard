@@ -99,13 +99,16 @@
   :test:
     - +:test/**
     - -:test/support
+    - -:test/integration/support
   :source:
     - ../ps1/**
     - ../micro_sd/**
+    - test/integration/support/**
   :include:
     - ../
     - ../ps1/**
     - ../micro_sd/**
+    - test/integration/support
   :support:
     - test/support
   :libraries: []
