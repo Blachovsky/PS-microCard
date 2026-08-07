@@ -679,6 +679,8 @@ micro_sd_result_t micro_sd_activate_image_as_inserted_card(
 
     result = micro_sd_save_worker_flush();
     if (result == MICRO_SD_RESULT_OK) {
+        /* Never expose RAM while it may contain a partial replacement image. */
+        ps1_bus_set_card_present(false);
         result = load_card_image_from_sd(path);
     }
 
@@ -686,6 +688,7 @@ micro_sd_result_t micro_sd_activate_image_as_inserted_card(
         ps1emu_storage_state_init();
         micro_sd_save_worker_init(path);
         ps1_bus_begin_card_swap_absent();
+        ps1_bus_set_card_present(true);
     }
 
     ps1_bus_release_pause();

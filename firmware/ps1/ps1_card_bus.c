@@ -27,6 +27,7 @@ static volatile uint32_t ps1_swap_absent_probe_count;
 #ifdef UNIT_TEST
 static ps1_bus_test_xfer_fn_t ps1_bus_test_xfer_fn;
 static ps1_bus_test_ack_fn_t ps1_bus_test_ack_fn;
+static bool ps1_bus_test_pause_auto_ack;
 #endif
 
 void __not_in_flash_func(ps1_bus_service_pause_if_requested)(void) {
@@ -47,6 +48,13 @@ void __not_in_flash_func(ps1_bus_service_pause_if_requested)(void) {
 void ps1_bus_request_pause_blocking(void) {
     __atomic_store_n(&ps1_pause_requested, true, __ATOMIC_RELEASE);
 
+#ifdef UNIT_TEST
+    if (ps1_bus_test_pause_auto_ack) {
+        __atomic_store_n(&ps1_pause_active, true, __ATOMIC_RELEASE);
+        return;
+    }
+#endif
+
     while (!__atomic_load_n(&ps1_pause_active, __ATOMIC_ACQUIRE)) {
         busy_wait_us_32(50);
     }
@@ -54,6 +62,13 @@ void ps1_bus_request_pause_blocking(void) {
 
 void ps1_bus_release_pause(void) {
     __atomic_store_n(&ps1_pause_requested, false, __ATOMIC_RELEASE);
+
+#ifdef UNIT_TEST
+    if (ps1_bus_test_pause_auto_ack) {
+        __atomic_store_n(&ps1_pause_active, false, __ATOMIC_RELEASE);
+        return;
+    }
+#endif
 
     while (__atomic_load_n(&ps1_pause_active, __ATOMIC_ACQUIRE)) {
         busy_wait_us_32(50);
@@ -508,12 +523,17 @@ void ps1_bus_test_reset_state(void) {
     ps1_swap_absent_probe_count = 0u;
     ps1_bus_test_xfer_fn = NULL;
     ps1_bus_test_ack_fn = NULL;
+    ps1_bus_test_pause_auto_ack = false;
 }
 
 void ps1_bus_test_set_transport(ps1_bus_test_xfer_fn_t xfer_fn,
                                 ps1_bus_test_ack_fn_t ack_fn) {
     ps1_bus_test_xfer_fn = xfer_fn;
     ps1_bus_test_ack_fn = ack_fn;
+}
+
+void ps1_bus_test_set_pause_auto_ack(bool enabled) {
+    ps1_bus_test_pause_auto_ack = enabled;
 }
 
 ps1_bus_xfer_result_t ps1_bus_test_hardware_xfer(uint8_t tx,

@@ -22,6 +22,7 @@ typedef void (*ps1_bus_test_ack_fn_t)(void);
 void ps1_bus_test_reset_state(void);
 void ps1_bus_test_set_transport(ps1_bus_test_xfer_fn_t xfer_fn,
                                 ps1_bus_test_ack_fn_t ack_fn);
+void ps1_bus_test_set_pause_auto_ack(bool enabled);
 ps1_bus_xfer_result_t ps1_bus_test_hardware_xfer(uint8_t tx,
                                                 uint8_t *rx,
                                                 bool send_ack);
