@@ -1,4 +1,4 @@
-#include "micro_sd/micro_sd.h"
+#include "micro_sd/micro_sd_image.h"
 
 #include "micro_sd/micro_sd_internal.h"
 
@@ -23,8 +23,11 @@
 #define PS1_DIR_NAME_SIZE     20u
 #define PS1_DIR_CHECKSUM_POS  127u
 
-#define PS1_DIR_FREE          0xA0u
-#define PS1_DIR_USED_FIRST    0x51u
+#define PS1_DIR_FREE           0xA0u
+#define PS1_DIR_DELETED_FIRST  0xA1u
+#define PS1_DIR_DELETED_MIDDLE 0xA2u
+#define PS1_DIR_DELETED_LAST   0xA3u
+#define PS1_DIR_USED_FIRST     0x51u
 
 /* Image validation and PS1 blank-card formatting. */
 
@@ -62,6 +65,7 @@ static bool stat_valid_image(const char *path, FILINFO *info) {
 }
 
 static bool card_image_is_erased_blank(void);
+static bool card_image_has_valid_format(void);
 static micro_sd_result_t overwrite_existing_image_with_blank_format(
         const char *path);
 
@@ -142,6 +146,9 @@ static micro_sd_result_t load_card_image_from_sd(const char *path) {
         if (result != MICRO_SD_RESULT_OK) {
             return result;
         }
+    } else if (!card_image_has_valid_format()) {
+        LOG_ERROR(LOG_TAG, "Invalid card image format: %s", path);
+        return MICRO_SD_ERROR_INVALID_IMAGE_FORMAT;
     }
 
     micro_sd_internal_set_active_image_path(path);
@@ -157,6 +164,43 @@ static uint8_t frame_checksum(const uint8_t frame[PS1_FRAME_SIZE]) {
     }
 
     return checksum;
+}
+
+static bool directory_state_is_valid(uint8_t state) {
+    return state == PS1_DIR_FREE ||
+           state == PS1_DIR_DELETED_FIRST ||
+           state == PS1_DIR_DELETED_MIDDLE ||
+           state == PS1_DIR_DELETED_LAST ||
+           state == PS1_DIR_USED_FIRST ||
+           state == 0x52u ||
+           state == 0x53u;
+}
+
+static bool card_image_has_valid_format(void) {
+    const uint8_t *header = &card_image[0];
+
+    if (header[0] != 'M' ||
+        header[1] != 'C' ||
+        header[PS1_DIR_CHECKSUM_POS] != frame_checksum(header)) {
+        return false;
+    }
+
+    for (uint16_t frame_addr = 1u;
+         frame_addr < PS1_DIR_FRAME_COUNT;
+         ++frame_addr) {
+        const uint8_t *entry =
+                &card_image[(size_t)frame_addr * PS1_FRAME_SIZE];
+
+        if (!directory_state_is_valid(entry[0]) ||
+            entry[1] != 0u ||
+            entry[2] != 0u ||
+            entry[3] != 0u ||
+            entry[PS1_DIR_CHECKSUM_POS] != frame_checksum(entry)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 static void make_blank_card_frame(uint16_t frame_addr,

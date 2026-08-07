@@ -101,9 +101,11 @@
     - -:test/support
   :source:
     - ../ps1/**
+    - ../micro_sd/**
   :include:
     - ../
     - ../ps1/**
+    - ../micro_sd/**
   :support:
     - test/support
   :libraries: []

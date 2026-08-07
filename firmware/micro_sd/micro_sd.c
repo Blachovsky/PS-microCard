@@ -45,6 +45,8 @@ const char *micro_sd_result_string(micro_sd_result_t result) {
             return "FILE NOT FOUND";
         case MICRO_SD_ERROR_INVALID_IMAGE_SIZE:
             return "BAD IMAGE SIZE";
+        case MICRO_SD_ERROR_INVALID_IMAGE_FORMAT:
+            return "BAD IMAGE FORMAT";
         case MICRO_SD_ERROR_OPEN_FAILED:
             return "OPEN FAILED";
         case MICRO_SD_ERROR_READ_FAILED:
