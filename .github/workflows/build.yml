@@ -14,14 +14,14 @@ on:
 jobs:
   build-firmware:
     name: Build RP2350 firmware
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     env:
       PICO_SDK_PATH: ${{ github.workspace }}/.deps/pico-sdk
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
