@@ -46,6 +46,7 @@ static void __not_in_flash_func(ps1_bus_service_loop)(void) {
         tight_loop_contents();
     }
 
+    ps1_bus_prepare_next_transaction();
     bool prev_cs = true;
 
     while (true) {
@@ -63,9 +64,13 @@ static void __not_in_flash_func(ps1_bus_service_loop)(void) {
 
             ps1emu_release_lines();
             wait_for_cs_release_bounded();
+            ps1_bus_prepare_next_transaction();
 
             restore_interrupts(irq_state);
             prev_cs = gpio_get(PS1_CS_PIN);
+        } else if (!prev_cs && cs) {
+            ps1_bus_prepare_next_transaction();
+            prev_cs = true;
         } else {
             prev_cs = cs;
         }
@@ -83,6 +88,7 @@ int main(void) {
              "PS1 memory card emulator - dual core + DFR0650 OLED");
 
     ps1emu_gpio_init();
+    ps1_bus_init();
     ps1emu_release_lines();
     ps1emu_storage_state_init();
     ps1_bus_set_card_present(false);

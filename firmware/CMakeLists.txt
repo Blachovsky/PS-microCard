@@ -93,6 +93,11 @@ set(APP_WARNING_OPTIONS
 # Add executable. Default name is the project name, version 0.1
 add_executable(main ${APP_SOURCES})
 
+pico_generate_pio_header(
+    main
+    ${CMAKE_CURRENT_LIST_DIR}/ps1/ps1_card_bus.pio
+)
+
 # Keep strict warnings on project code only; Pico SDK and submodules stay quiet.
 set_source_files_properties(
     ${APP_SOURCES}
@@ -112,6 +117,8 @@ target_link_libraries(
     main
     pico_stdlib
     pico_multicore
+    hardware_clocks
+    hardware_pio
     hardware_spi
     ${SDIO_RPI2_TARGET}
     )

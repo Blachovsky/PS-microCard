@@ -5,6 +5,8 @@
 
 #include <stdbool.h>
 
+void ps1_bus_init(void);
+void ps1_bus_prepare_next_transaction(void);
 void ps1emu_handle_transaction(void);
 void ps1emu_release_lines(void);
 void ps1_bus_service_pause_if_requested(void);

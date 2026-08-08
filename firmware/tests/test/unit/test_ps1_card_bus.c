@@ -36,7 +36,7 @@ typedef struct {
     uint8_t rx[SCRIPT_CAPACITY];
     uint8_t tx[SCRIPT_CAPACITY];
     ps1_bus_xfer_result_t result[SCRIPT_CAPACITY];
-    bool send_ack[SCRIPT_CAPACITY];
+    bool ack_before[SCRIPT_CAPACITY];
     size_t length;
     size_t position;
     bool overrun;
@@ -60,7 +60,6 @@ typedef struct {
 
 static xfer_script_t script;
 static fake_gpio_t fake_gpio;
-static uint32_t manual_ack_count;
 static uint8_t expected_card[PS1_CARD_SIZE];
 
 static void reset_fake_gpio(void) {
@@ -76,7 +75,7 @@ static void prepare_script(size_t length) {
 
 static ps1_bus_xfer_result_t scripted_xfer(uint8_t tx,
                                            uint8_t *rx,
-                                           bool send_ack) {
+                                           bool ack_before) {
     if (script.position >= script.length) {
         script.overrun = true;
         return PS1_BUS_XFER_ABORTED;
@@ -84,17 +83,13 @@ static ps1_bus_xfer_result_t scripted_xfer(uint8_t tx,
 
     size_t index = script.position++;
     script.tx[index] = tx;
-    script.send_ack[index] = send_ack;
+    script.ack_before[index] = ack_before;
 
     if (rx != NULL) {
         *rx = script.rx[index];
     }
 
     return script.result[index];
-}
-
-static void record_manual_ack(void) {
-    ++manual_ack_count;
 }
 
 static void reset_fixture(void) {
@@ -104,8 +99,7 @@ static void reset_fixture(void) {
     ps1_bus_test_reset_state();
     reset_fake_gpio();
     prepare_script(0u);
-    manual_ack_count = 0u;
-    ps1_bus_test_set_transport(scripted_xfer, record_manual_ack);
+    ps1_bus_test_set_transport(scripted_xfer);
 }
 
 void setUp(void) {
@@ -222,15 +216,14 @@ static void prepare_status(void) {
     script.rx[COMMAND_INDEX] = 0x53u;
 }
 
-static void assert_successful_access_and_ack(size_t transfer_count) {
+static void assert_successful_pipelined_access(size_t transfer_count) {
     TEST_ASSERT_FALSE(script.overrun);
     TEST_ASSERT_EQUAL_UINT32(transfer_count, script.position);
     TEST_ASSERT_EQUAL_HEX8(0xFFu, script.tx[ACCESS_INDEX]);
-    TEST_ASSERT_FALSE(script.send_ack[ACCESS_INDEX]);
-    TEST_ASSERT_EQUAL_UINT32(1u, manual_ack_count);
+    TEST_ASSERT_FALSE(script.ack_before[ACCESS_INDEX]);
 
     for (size_t i = 1u; i < transfer_count; ++i) {
-        TEST_ASSERT_TRUE(script.send_ack[i]);
+        TEST_ASSERT_TRUE(script.ack_before[i]);
     }
 }
 
@@ -261,7 +254,7 @@ void test_read_0x52_returns_128_bytes_xor_checksum_and_good_result(void) {
 
     ps1emu_handle_transaction();
 
-    assert_successful_access_and_ack(READ_TRANSFER_COUNT);
+    assert_successful_pipelined_access(READ_TRANSFER_COUNT);
     TEST_ASSERT_EQUAL_HEX8(0x08u, script.tx[COMMAND_INDEX]);
     TEST_ASSERT_EQUAL_HEX8(0x5Au, script.tx[2]);
     TEST_ASSERT_EQUAL_HEX8(0x5Du, script.tx[3]);
@@ -287,7 +280,7 @@ void test_status_0x53_returns_complete_status_response(void) {
 
     ps1emu_handle_transaction();
 
-    assert_successful_access_and_ack(STATUS_TRANSFER_COUNT);
+    assert_successful_pipelined_access(STATUS_TRANSFER_COUNT);
     TEST_ASSERT_EQUAL_HEX8(0x08u, script.tx[COMMAND_INDEX]);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(expected,
                                   &script.tx[STATUS_RESPONSE_INDEX],
@@ -307,7 +300,7 @@ void test_write_0x57_commits_exactly_128_bytes_and_returns_good_result(void) {
 
     ps1emu_handle_transaction();
 
-    assert_successful_access_and_ack(WRITE_TRANSFER_COUNT);
+    assert_successful_pipelined_access(WRITE_TRANSFER_COUNT);
     assert_card_contains_only_frame(frame_addr, data);
     TEST_ASSERT_EQUAL_HEX8(0x5Cu, script.tx[WRITE_TRAILER_INDEX]);
     TEST_ASSERT_EQUAL_HEX8(0x5Du, script.tx[WRITE_TRAILER_INDEX + 1]);
@@ -338,7 +331,7 @@ void test_read_accepts_first_and_last_frame_addresses(void) {
 
         ps1emu_handle_transaction();
 
-        assert_successful_access_and_ack(READ_TRANSFER_COUNT);
+        assert_successful_pipelined_access(READ_TRANSFER_COUNT);
         TEST_ASSERT_EQUAL_UINT8_ARRAY(expected,
                                       &script.tx[READ_DATA_INDEX],
                                       PS1_FRAME_SIZE);
@@ -357,7 +350,7 @@ void test_write_accepts_first_and_last_frame_addresses(void) {
 
         ps1emu_handle_transaction();
 
-        assert_successful_access_and_ack(WRITE_TRANSFER_COUNT);
+        assert_successful_pipelined_access(WRITE_TRANSFER_COUNT);
         assert_card_contains_only_frame(addresses[i], data);
         TEST_ASSERT_EQUAL_HEX8(0x47u, script.tx[WRITE_RESULT_INDEX]);
     }
@@ -368,7 +361,7 @@ void test_out_of_range_read_returns_ff_data_checksum_and_bad_sector(void) {
 
     ps1emu_handle_transaction();
 
-    assert_successful_access_and_ack(READ_TRANSFER_COUNT);
+    assert_successful_pipelined_access(READ_TRANSFER_COUNT);
     for (size_t i = 0; i < PS1_FRAME_SIZE; ++i) {
         TEST_ASSERT_EQUAL_HEX8(0xFFu, script.tx[READ_DATA_INDEX + i]);
     }
@@ -384,7 +377,7 @@ void test_out_of_range_write_returns_bad_sector_without_changing_ram(void) {
 
     ps1emu_handle_transaction();
 
-    assert_successful_access_and_ack(WRITE_TRANSFER_COUNT);
+    assert_successful_pipelined_access(WRITE_TRANSFER_COUNT);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(expected_card, card_image, PS1_CARD_SIZE);
     TEST_ASSERT_EQUAL_HEX8(0xFFu, script.tx[WRITE_RESULT_INDEX]);
 }
@@ -398,7 +391,7 @@ void test_write_with_bad_checksum_returns_error_without_changing_ram(void) {
 
     ps1emu_handle_transaction();
 
-    assert_successful_access_and_ack(WRITE_TRANSFER_COUNT);
+    assert_successful_pipelined_access(WRITE_TRANSFER_COUNT);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(expected_card, card_image, PS1_CARD_SIZE);
     TEST_ASSERT_EQUAL_HEX8(0x43u, script.tx[WRITE_RESULT_INDEX]);
 }
@@ -414,7 +407,7 @@ void test_unknown_commands_0x00_and_0xff_are_ignored(void) {
 
         ps1emu_handle_transaction();
 
-        assert_successful_access_and_ack(2u);
+        assert_successful_pipelined_access(2u);
         assert_lines_released();
     }
 }
@@ -427,8 +420,7 @@ void test_access_byte_other_than_0x81_is_rejected_without_ack(void) {
 
     TEST_ASSERT_EQUAL_UINT32(1u, script.position);
     TEST_ASSERT_EQUAL_HEX8(0xFFu, script.tx[ACCESS_INDEX]);
-    TEST_ASSERT_FALSE(script.send_ack[ACCESS_INDEX]);
-    TEST_ASSERT_EQUAL_UINT32(0u, manual_ack_count);
+    TEST_ASSERT_FALSE(script.ack_before[ACCESS_INDEX]);
     assert_lines_released();
 }
 
@@ -513,7 +505,7 @@ void test_clock_timeout_during_write_data_prevents_commit(void) {
 void test_hardware_xfer_generates_ack_pulse_and_transfers_lsb_first(void) {
     uint8_t rx = 0u;
 
-    ps1_bus_test_set_transport(NULL, NULL);
+    ps1_bus_test_set_transport(NULL);
     reset_fake_gpio();
     fake_gpio.cmd_byte = 0x3Cu;
 
@@ -527,7 +519,7 @@ void test_hardware_xfer_generates_ack_pulse_and_transfers_lsb_first(void) {
 
 void test_hardware_xfer_aborts_when_cs_rises_at_each_bit(void) {
     for (int32_t bit = 0; bit < 8; ++bit) {
-        ps1_bus_test_set_transport(NULL, NULL);
+        ps1_bus_test_set_transport(NULL);
         reset_fake_gpio();
         fake_gpio.cs_high_after_read = bit;
 
@@ -539,7 +531,7 @@ void test_hardware_xfer_aborts_when_cs_rises_at_each_bit(void) {
 }
 
 void test_hardware_xfer_aborts_if_cs_rises_while_waiting_for_clock(void) {
-    ps1_bus_test_set_transport(NULL, NULL);
+    ps1_bus_test_set_transport(NULL);
     reset_fake_gpio();
     fake_gpio.sck_never_edges = true;
     fake_gpio.cs_high_after_read = 4;
@@ -553,7 +545,7 @@ void test_hardware_xfer_aborts_if_cs_rises_while_waiting_for_clock(void) {
 }
 
 void test_hardware_xfer_times_out_when_no_clock_edge_arrives(void) {
-    ps1_bus_test_set_transport(NULL, NULL);
+    ps1_bus_test_set_transport(NULL);
     reset_fake_gpio();
     fake_gpio.sck_never_edges = true;
 
@@ -568,7 +560,7 @@ void test_hardware_xfer_times_out_when_no_clock_edge_arrives(void) {
 void test_hardware_xfer_accepts_very_slow_edges_before_timeout(void) {
     uint8_t rx = 0u;
 
-    ps1_bus_test_set_transport(NULL, NULL);
+    ps1_bus_test_set_transport(NULL);
     reset_fake_gpio();
     fake_gpio.cmd_byte = 0xC3u;
     fake_gpio.sck_delay_per_edge = PS1_BUS_CLOCK_TIMEOUT_LOOPS - 1u;
@@ -581,7 +573,7 @@ void test_hardware_xfer_accepts_very_slow_edges_before_timeout(void) {
 }
 
 void test_hardware_xfer_rejects_edge_at_exact_timeout_boundary(void) {
-    ps1_bus_test_set_transport(NULL, NULL);
+    ps1_bus_test_set_transport(NULL);
     reset_fake_gpio();
     fake_gpio.sck_delay_per_edge = PS1_BUS_CLOCK_TIMEOUT_LOOPS;
     fake_gpio.sck_delay_remaining = PS1_BUS_CLOCK_TIMEOUT_LOOPS;

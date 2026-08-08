@@ -625,8 +625,8 @@ void app_log_write(int level,
 
 static ps1_bus_xfer_result_t scripted_xfer(uint8_t tx,
                                            uint8_t *rx,
-                                           bool send_ack) {
-    (void)send_ack;
+                                           bool ack_before) {
+    (void)ack_before;
     TEST_ASSERT_TRUE(script.position < script.length);
 
     size_t index = script.position++;
@@ -637,9 +637,6 @@ static ps1_bus_xfer_result_t scripted_xfer(uint8_t tx,
     }
 
     return PS1_BUS_XFER_OK;
-}
-
-static void record_ack(void) {
 }
 
 static void prepare_script(size_t length) {
@@ -726,7 +723,7 @@ void pipeline_restart_firmware(const char *path) {
     ps1emu_storage_state_init();
     ps1_bus_test_reset_state();
     ps1_bus_test_set_pause_auto_ack(true);
-    ps1_bus_test_set_transport(scripted_xfer, record_ack);
+    ps1_bus_test_set_transport(scripted_xfer);
 
     TEST_ASSERT_EQUAL_INT(
             MICRO_SD_RESULT_OK,
@@ -890,7 +887,7 @@ void pipeline_test_set_up(void) {
     ps1emu_storage_state_init();
     ps1_bus_test_reset_state();
     ps1_bus_test_set_pause_auto_ack(true);
-    ps1_bus_test_set_transport(scripted_xfer, record_ack);
+    ps1_bus_test_set_transport(scripted_xfer);
 }
 
 void pipeline_test_tear_down(void) {

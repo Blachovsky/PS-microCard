@@ -102,6 +102,13 @@ przez `f_write` od danych utrwalonych dopiero przez poprawny `f_sync`.
 | `test_hardware_xfer_accepts_very_slow_edges_before_timeout` | Akceptację bardzo wolnej transmisji mieszczącej się w limicie. |
 | `test_hardware_xfer_rejects_edge_at_exact_timeout_boundary` | Zachowanie dokładnie na granicy timeoutu. |
 
+Testy hostowe sprawdzają parser i potokową umowę transportu: pierwszy bajt
+`0x81` jest odbierany bez ACK, a każda kolejna odpowiedź zostaje przygotowana
+przed ACK otwierającym następny bajt. Testy o nazwach `hardware_xfer_*`
+uruchamiają wyłącznie referencyjny transport bit-bang kompilowany dla
+`UNIT_TEST`. Produkcyjne state machine PIO są weryfikowane przez kompilację
+firmware i wymagają końcowego testu na urządzeniu lub analizatorze logicznym.
+
 ### `test_micro_sd_worker.c`
 
 | Test | Co sprawdza |

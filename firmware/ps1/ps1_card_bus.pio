@@ -1,0 +1,47 @@
+; PS1 memory-card serial transport.
+;
+; The protocol is LSB-first and uses open-drain DATA and ACK outputs.  Two
+; independent state machines are used so CMD reception never depends on the
+; CPU finishing an ACK pulse or loading the next DATA byte.
+
+.program ps1_card_cmd_rx
+
+; IN base: CMD
+;   pin 0 = CMD
+;   pin 1 = CS
+;   pin 2 = SCK
+;
+; CS is checked once when the state machine is armed.  The CPU restarts both
+; state machines after every transaction, including aborted transactions.
+wait 0 pin 1
+.wrap_target
+wait 0 pin 2
+wait 1 pin 2
+in pins, 1
+.wrap
+
+.program ps1_card_data_tx
+.side_set 1 pindirs
+
+; IN base: DATA
+;   pin 2 = CS
+;   pin 3 = SCK
+; OUT/SET base: DATA
+; SIDESET base: ACK
+;
+; A one in OSR drives DATA low by changing its direction to output.  A zero
+; releases DATA (input/high impedance).  C therefore writes an inverted byte
+; to the FIFO.  The byte is pulled before ACK is asserted: after seeing ACK,
+; the console can safely start clocking the already prepared response.
+set pindirs, 0 side 0
+wait 0 pin 2 side 0
+.wrap_target
+pull block side 0
+nop side 1 [5]
+set x, 7 side 0 [5]
+bit_loop:
+wait 1 pin 3 side 0
+wait 0 pin 3 side 0
+out pindirs, 1 side 0
+jmp x-- bit_loop side 0
+.wrap

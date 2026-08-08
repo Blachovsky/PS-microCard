@@ -5,6 +5,12 @@
 #include "ps1/ps1_card_emulator.h"
 #include "pico/stdlib.h"
 
+#ifndef UNIT_TEST
+#include "hardware/clocks.h"
+#include "hardware/pio.h"
+#include "ps1_card_bus.pio.h"
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -16,6 +22,20 @@
 #define PS1_CARD_SWAP_ABSENT_US (1500u * 1000u)
 #define PS1_CARD_SWAP_MIN_PROBES 2u
 
+#ifndef UNIT_TEST
+#define PS1_BUS_PIO_CLOCK_HZ       2500000u
+#define PS1_BUS_BYTE_TIMEOUT_US    500u
+
+_Static_assert(PS1_CS_PIN == PS1_CMD_PIN + 1,
+               "PIO RX requires CMD and CS on consecutive GPIOs");
+_Static_assert(PS1_SCK_PIN == PS1_CMD_PIN + 2,
+               "PIO RX requires SCK two GPIOs after CMD");
+_Static_assert(PS1_CS_PIN == PS1_DATA_PIN + 2,
+               "PIO TX requires CS two GPIOs after DATA");
+_Static_assert(PS1_SCK_PIN == PS1_DATA_PIN + 3,
+               "PIO TX requires SCK three GPIOs after DATA");
+#endif
+
 static volatile uint8_t ps1_mc_status = PS1_MC_STATUS_POWER_ON;
 static volatile bool ps1_card_present;
 static volatile bool ps1_pause_requested;
@@ -24,9 +44,19 @@ static volatile bool ps1_swap_absent_pending;
 static volatile uint32_t ps1_swap_absent_until_us;
 static volatile uint32_t ps1_swap_absent_probe_count;
 
+#ifndef UNIT_TEST
+static PIO ps1_bus_pio = pio0;
+static uint ps1_bus_rx_sm;
+static uint ps1_bus_tx_sm;
+static uint ps1_bus_rx_offset;
+static uint ps1_bus_tx_offset;
+static pio_sm_config ps1_bus_rx_config;
+static pio_sm_config ps1_bus_tx_config;
+static bool ps1_bus_pio_initialized;
+#endif
+
 #ifdef UNIT_TEST
 static ps1_bus_test_xfer_fn_t ps1_bus_test_xfer_fn;
-static ps1_bus_test_ack_fn_t ps1_bus_test_ack_fn;
 static bool ps1_bus_test_pause_auto_ack;
 #endif
 
@@ -41,6 +71,17 @@ void __not_in_flash_func(ps1_bus_service_pause_if_requested)(void) {
     while (__atomic_load_n(&ps1_pause_requested, __ATOMIC_ACQUIRE)) {
         tight_loop_contents();
     }
+
+#ifndef UNIT_TEST
+    uint32_t deadline = time_us_32() + 5000u;
+
+    while (gpio_get(PS1_CS_PIN) == 0 &&
+           (int32_t)(time_us_32() - deadline) < 0) {
+        tight_loop_contents();
+    }
+
+    ps1_bus_prepare_next_transaction();
+#endif
 
     __atomic_store_n(&ps1_pause_active, false, __ATOMIC_RELEASE);
 }
@@ -137,10 +178,130 @@ bool __not_in_flash_func(ps1_bus_should_ignore_transaction_for_swap)(void) {
     return false;
 }
 
+void ps1_bus_init(void) {
+#ifndef UNIT_TEST
+    int rx_sm = pio_claim_unused_sm(ps1_bus_pio, true);
+    int tx_sm = pio_claim_unused_sm(ps1_bus_pio, true);
+    int rx_offset = pio_add_program(ps1_bus_pio,
+                                    &ps1_card_cmd_rx_program);
+    int tx_offset = pio_add_program(ps1_bus_pio,
+                                    &ps1_card_data_tx_program);
+
+    ps1_bus_rx_sm = (uint)rx_sm;
+    ps1_bus_tx_sm = (uint)tx_sm;
+    ps1_bus_rx_offset = (uint)rx_offset;
+    ps1_bus_tx_offset = (uint)tx_offset;
+
+    float clock_divider = (float)clock_get_hz(clk_sys) /
+                          (float)PS1_BUS_PIO_CLOCK_HZ;
+
+    ps1_bus_rx_config = ps1_card_cmd_rx_program_get_default_config(
+            ps1_bus_rx_offset);
+    sm_config_set_in_pins(&ps1_bus_rx_config, PS1_CMD_PIN);
+    sm_config_set_in_shift(&ps1_bus_rx_config, true, true, 8u);
+    sm_config_set_fifo_join(&ps1_bus_rx_config, PIO_FIFO_JOIN_RX);
+    sm_config_set_clkdiv(&ps1_bus_rx_config, clock_divider);
+
+    ps1_bus_tx_config = ps1_card_data_tx_program_get_default_config(
+            ps1_bus_tx_offset);
+    sm_config_set_in_pins(&ps1_bus_tx_config, PS1_DATA_PIN);
+    sm_config_set_out_pins(&ps1_bus_tx_config, PS1_DATA_PIN, 1u);
+    sm_config_set_set_pins(&ps1_bus_tx_config, PS1_DATA_PIN, 1u);
+    sm_config_set_sideset_pins(&ps1_bus_tx_config, PS1_ACK_PIN);
+    sm_config_set_out_shift(&ps1_bus_tx_config, true, true, 8u);
+    sm_config_set_fifo_join(&ps1_bus_tx_config, PIO_FIFO_JOIN_TX);
+    sm_config_set_clkdiv(&ps1_bus_tx_config, clock_divider);
+
+    /* DATA and ACK are open-drain: the output latch is always low. */
+    gpio_put(PS1_DATA_PIN, 0);
+    gpio_put(PS1_ACK_PIN, 0);
+    pio_gpio_init(ps1_bus_pio, PS1_DATA_PIN);
+    pio_gpio_init(ps1_bus_pio, PS1_ACK_PIN);
+
+    ps1_bus_pio_initialized = true;
+#endif
+}
+
+void __not_in_flash_func(ps1_bus_prepare_next_transaction)(void) {
+#ifndef UNIT_TEST
+    if (!ps1_bus_pio_initialized || gpio_get(PS1_CS_PIN) == 0) {
+        return;
+    }
+
+    uint32_t sm_mask = (1u << ps1_bus_rx_sm) |
+                       (1u << ps1_bus_tx_sm);
+
+    pio_set_sm_mask_enabled(ps1_bus_pio, sm_mask, false);
+    pio_sm_init(ps1_bus_pio,
+                ps1_bus_rx_sm,
+                ps1_bus_rx_offset,
+                &ps1_bus_rx_config);
+    pio_sm_init(ps1_bus_pio,
+                ps1_bus_tx_sm,
+                ps1_bus_tx_offset,
+                &ps1_bus_tx_config);
+
+    pio_sm_set_consecutive_pindirs(ps1_bus_pio,
+                                   ps1_bus_rx_sm,
+                                   PS1_CMD_PIN,
+                                   1u,
+                                   false);
+    pio_sm_set_consecutive_pindirs(ps1_bus_pio,
+                                   ps1_bus_tx_sm,
+                                   PS1_DATA_PIN,
+                                   1u,
+                                   false);
+    pio_sm_set_consecutive_pindirs(ps1_bus_pio,
+                                   ps1_bus_tx_sm,
+                                   PS1_ACK_PIN,
+                                   1u,
+                                   false);
+    pio_sm_set_pins_with_mask(ps1_bus_pio,
+                              ps1_bus_tx_sm,
+                              0u,
+                              (1u << PS1_DATA_PIN) |
+                                      (1u << PS1_ACK_PIN));
+
+    pio_enable_sm_mask_in_sync(ps1_bus_pio, sm_mask);
+#endif
+}
+
 static void __not_in_flash_func(ps1_data_release)(void) {
     gpio_set_dir(PS1_DATA_PIN, GPIO_IN);
 }
 
+static void __not_in_flash_func(ps1_ack_release)(void) {
+    gpio_set_dir(PS1_ACK_PIN, GPIO_IN);
+}
+
+void __not_in_flash_func(ps1emu_release_lines)(void) {
+#ifndef UNIT_TEST
+    if (ps1_bus_pio_initialized) {
+        uint32_t sm_mask = (1u << ps1_bus_rx_sm) |
+                           (1u << ps1_bus_tx_sm);
+
+        pio_set_sm_mask_enabled(ps1_bus_pio, sm_mask, false);
+        pio_sm_clear_fifos(ps1_bus_pio, ps1_bus_rx_sm);
+        pio_sm_clear_fifos(ps1_bus_pio, ps1_bus_tx_sm);
+        pio_sm_set_consecutive_pindirs(ps1_bus_pio,
+                                       ps1_bus_tx_sm,
+                                       PS1_DATA_PIN,
+                                       1u,
+                                       false);
+        pio_sm_set_consecutive_pindirs(ps1_bus_pio,
+                                       ps1_bus_tx_sm,
+                                       PS1_ACK_PIN,
+                                       1u,
+                                       false);
+        return;
+    }
+#endif
+
+    ps1_data_release();
+    ps1_ack_release();
+}
+
+#ifdef UNIT_TEST
 static void __not_in_flash_func(ps1_data_drive_low)(void) {
     gpio_put(PS1_DATA_PIN, 0);
     gpio_set_dir(PS1_DATA_PIN, GPIO_OUT);
@@ -154,28 +315,12 @@ static void __not_in_flash_func(ps1_data_write_bit)(uint8_t bit) {
     }
 }
 
-static void __not_in_flash_func(ps1_ack_release)(void) {
-    gpio_set_dir(PS1_ACK_PIN, GPIO_IN);
-}
-
 static void __not_in_flash_func(ps1_ack_drive_low)(void) {
     gpio_put(PS1_ACK_PIN, 0);
     gpio_set_dir(PS1_ACK_PIN, GPIO_OUT);
 }
 
-void __not_in_flash_func(ps1emu_release_lines)(void) {
-    ps1_data_release();
-    ps1_ack_release();
-}
-
 static void __not_in_flash_func(ps1emu_ack_pulse)(void) {
-#ifdef UNIT_TEST
-    if (ps1_bus_test_ack_fn != NULL) {
-        ps1_bus_test_ack_fn();
-        return;
-    }
-#endif
-
     ps1_ack_drive_low();
 
     uint32_t start = time_us_32();
@@ -206,7 +351,7 @@ static ps1_bus_xfer_result_t __not_in_flash_func(wait_sck_level)(
 
 static uint8_t __not_in_flash_func(ps1emu_recv_send_byte_internal)(
         uint8_t tx,
-        bool send_ack,
+        bool ack_after,
         ps1_bus_xfer_result_t *result) {
     uint8_t rx = 0;
 
@@ -246,7 +391,7 @@ static uint8_t __not_in_flash_func(ps1emu_recv_send_byte_internal)(
         }
     }
 
-    if (send_ack && gpio_get(PS1_CS_PIN) == 0) {
+    if (ack_after && gpio_get(PS1_CS_PIN) == 0) {
         ps1emu_ack_pulse();
     }
 
@@ -260,10 +405,10 @@ static uint8_t __not_in_flash_func(ps1emu_recv_send_byte_internal)(
 static ps1_bus_xfer_result_t __not_in_flash_func(ps1emu_hardware_xfer)(
         uint8_t tx,
         uint8_t *rx,
-        bool send_ack) {
+        bool ack_after) {
     ps1_bus_xfer_result_t result;
     uint8_t value = ps1emu_recv_send_byte_internal(tx,
-                                                   send_ack,
+                                                   ack_after,
                                                    &result);
 
     if (rx) {
@@ -272,18 +417,71 @@ static ps1_bus_xfer_result_t __not_in_flash_func(ps1emu_hardware_xfer)(
 
     return result;
 }
+#else
+static ps1_bus_xfer_result_t __not_in_flash_func(ps1_bus_pio_receive_byte)(
+        uint8_t *rx) {
+    uint32_t deadline = time_us_32() + PS1_BUS_BYTE_TIMEOUT_US;
+
+    while (pio_sm_is_rx_fifo_empty(ps1_bus_pio, ps1_bus_rx_sm)) {
+        if (gpio_get(PS1_CS_PIN) == 1) {
+            return PS1_BUS_XFER_ABORTED;
+        }
+
+        if ((int32_t)(time_us_32() - deadline) >= 0) {
+            return PS1_BUS_XFER_CLOCK_TIMEOUT;
+        }
+
+        tight_loop_contents();
+    }
+
+    uint8_t value = (uint8_t)(pio_sm_get(ps1_bus_pio,
+                                         ps1_bus_rx_sm) >> 24);
+
+    if (rx != NULL) {
+        *rx = value;
+    }
+
+    return PS1_BUS_XFER_OK;
+}
+
+/*
+ * For the first byte ack_before is false and DATA stays released.  Every
+ * following call queues its response first; only then does the TX state
+ * machine assert ACK for the byte received by the preceding call.
+ */
+static ps1_bus_xfer_result_t __not_in_flash_func(ps1emu_hardware_xfer)(
+        uint8_t tx,
+        uint8_t *rx,
+        bool ack_before) {
+    if (!ps1_bus_pio_initialized) {
+        return PS1_BUS_XFER_ABORTED;
+    }
+
+    if (ack_before) {
+        if (gpio_get(PS1_CS_PIN) == 1) {
+            return PS1_BUS_XFER_ABORTED;
+        }
+
+        pio_sm_put_blocking(ps1_bus_pio,
+                            ps1_bus_tx_sm,
+                            (~(uint32_t)tx) & 0xFFu);
+    }
+
+    return ps1_bus_pio_receive_byte(rx);
+}
+#endif
 
 static ps1_bus_xfer_result_t __not_in_flash_func(ps1emu_xfer)(
         uint8_t tx,
         uint8_t *rx,
-        bool send_ack) {
+        bool ack_before) {
 #ifdef UNIT_TEST
     if (ps1_bus_test_xfer_fn != NULL) {
-        return ps1_bus_test_xfer_fn(tx, rx, send_ack);
+        return ps1_bus_test_xfer_fn(tx, rx, ack_before);
     }
 #endif
 
-    return ps1emu_hardware_xfer(tx, rx, send_ack);
+    return ps1emu_hardware_xfer(tx, rx, ack_before);
 }
 
 static ps1_bus_xfer_result_t __not_in_flash_func(ps1emu_exchange_byte)(
@@ -487,8 +685,6 @@ void __not_in_flash_func(ps1emu_handle_transaction)(void) {
         return;
     }
 
-    ps1emu_ack_pulse();
-
     uint8_t status_snapshot = ps1_mc_status;
     uint8_t command;
 
@@ -522,14 +718,11 @@ void ps1_bus_test_reset_state(void) {
     ps1_swap_absent_until_us = 0u;
     ps1_swap_absent_probe_count = 0u;
     ps1_bus_test_xfer_fn = NULL;
-    ps1_bus_test_ack_fn = NULL;
     ps1_bus_test_pause_auto_ack = false;
 }
 
-void ps1_bus_test_set_transport(ps1_bus_test_xfer_fn_t xfer_fn,
-                                ps1_bus_test_ack_fn_t ack_fn) {
+void ps1_bus_test_set_transport(ps1_bus_test_xfer_fn_t xfer_fn) {
     ps1_bus_test_xfer_fn = xfer_fn;
-    ps1_bus_test_ack_fn = ack_fn;
 }
 
 void ps1_bus_test_set_pause_auto_ack(bool enabled) {
@@ -538,7 +731,7 @@ void ps1_bus_test_set_pause_auto_ack(bool enabled) {
 
 ps1_bus_xfer_result_t ps1_bus_test_hardware_xfer(uint8_t tx,
                                                 uint8_t *rx,
-                                                bool send_ack) {
-    return ps1emu_hardware_xfer(tx, rx, send_ack);
+                                                bool ack_after) {
+    return ps1emu_hardware_xfer(tx, rx, ack_after);
 }
 #endif
