@@ -165,7 +165,8 @@ void micro_sd_internal_copy_string(char *dst, size_t dst_size, const char *src) 
             ? length
             : dst_size - 1u;
 
-    memcpy(dst, src, copy_length);
+    /* The active path may be passed back as the source during reinit. */
+    memmove(dst, src, copy_length);
     dst[copy_length] = '\0';
 }
 
