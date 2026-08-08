@@ -1,0 +1,76 @@
+name: Firmware build
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+jobs:
+  build-firmware:
+    name: Build RP2350 firmware
+    runs-on: ubuntu-latest
+
+    env:
+      PICO_SDK_PATH: ${{ github.workspace }}/.deps/pico-sdk
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install ARM toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            gcc-arm-none-eabi \
+            libnewlib-arm-none-eabi \
+            build-essential
+
+      - name: Clone Pico SDK
+        run: |
+          git clone \
+            --branch 2.2.0 \
+            --depth 1 \
+            https://github.com/raspberrypi/pico-sdk.git \
+            "$PICO_SDK_PATH"
+
+          git -C "$PICO_SDK_PATH" submodule update --init --recursive
+
+      - name: Configure firmware
+        run: |
+          cmake \
+            -S firmware \
+            -B build/firmware \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build firmware
+        run: |
+          cmake \
+            --build build/firmware \
+            --parallel
+
+      - name: Show generated files
+        run: |
+          find build/firmware \
+            \( -name "*.uf2" -o -name "*.elf" -o -name "*.bin" \) \
+            -print
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: ps-microcard-firmware
+          path: |
+            build/firmware/**/*.uf2
+            build/firmware/**/*.elf
+            build/firmware/**/*.bin
+          if-no-files-found: error
