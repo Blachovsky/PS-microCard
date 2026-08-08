@@ -1,2 +1,7 @@
-build
+/build/
+/out/
+/tests/build/
+
+# Keep the shared Pico extension configuration under version control.
+!.vscode/
 !.vscode/*

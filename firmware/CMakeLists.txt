@@ -1,6 +1,6 @@
 # Generated Cmake Pico project file
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.18)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -33,8 +33,22 @@ project(main C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
+include(FetchContent)
+
+# Fetch the SD/FatFs driver automatically so a regular clone is sufficient.
+# Pin the exact revision that was previously used by the Git submodule.
+FetchContent_Declare(
+    sdio_rpi2
+    GIT_REPOSITORY
+        https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico.git
+    GIT_TAG
+        d5e453404cdbfaa55ab30d285b6ab0b730e84a05
+    SOURCE_SUBDIR
+        src
+)
+FetchContent_MakeAvailable(sdio_rpi2)
+
 set(SDIO_RPI2_TARGET no-OS-FatFS-SD-SDIO-SPI-RPi-Pico)
-add_subdirectory(lib/SDIO_RPI2/src)
 
 get_target_property(SDIO_RPI2_INCLUDE_DIRS
     ${SDIO_RPI2_TARGET}
