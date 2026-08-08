@@ -8,7 +8,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #define FRAME_QUEUE_CAPACITY 8u
@@ -100,7 +99,17 @@ static void copy_string(char *dst, size_t dst_size, const char *src) {
         return;
     }
 
-    (void)snprintf(dst, dst_size, "%s", src == NULL ? "" : src);
+    if (src == NULL) {
+        src = "";
+    }
+
+    size_t length = strlen(src);
+    size_t copy_length = length < dst_size - 1u
+            ? length
+            : dst_size - 1u;
+
+    memmove(dst, src, copy_length);
+    dst[copy_length] = '\0';
 }
 
 static const char *path_base_name(const char *path) {
