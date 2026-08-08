@@ -1,6 +1,2 @@
-[![Build](https://img.shields.io/github/actions/workflow/status/Blachovsky/PS-microCard/build.yml?branch=main&label=Build)](https://github.com/TWOJ_LOGIN/PS-microCard/actions/workflows/build.yml)
-[![Host tests](https://img.shields.io/github/actions/workflow/status/Blachovsky/PS-microCard/tests.yml?branch=main&label=Host%20tests)](https://github.com/TWOJ_LOGIN/PS-microCard/actions/workflows/tests.yml)
-![Hardware](https://img.shields.io/badge/Hardware-RP2350-blue)
-![Tests](https://img.shields.io/badge/Tests-75%20passed-brightgreen)
-![Unit tests](https://img.shields.io/badge/Unit%20tests-61-informational)
-![Integration tests](https://img.shields.io/badge/Integration%20tests-14-informational)
+[![Firmware build](https://github.com/Blachovsky/PS-microCard/actions/workflows/build.yml/badge.svg)](https://github.com/Blachovsky/PS-microCard/actions/workflows/build.yml)
+[![Firmware tests](https://github.com/Blachovsky/PS-microCard/actions/workflows/tests.yml/badge.svg)](https://github.com/Blachovsky/PS-microCard/actions/workflows/tests.yml)
