@@ -16,6 +16,7 @@ Zależności Ruby są przypięte w `Gemfile.lock`. Należy zainstalować je raz,
 wykonując w tym katalogu:
 
 ```console
+bundle config set --local path vendor/bundle
 bundle install
 ```
 
