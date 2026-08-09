@@ -34,6 +34,14 @@ project(main C CXX ASM)
 pico_sdk_init()
 
 set(SDIO_RPI2_TARGET no-OS-FatFS-SD-SDIO-SPI-RPi-Pico)
+
+if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/lib/SDIO_RPI2/src/CMakeLists.txt")
+    message(FATAL_ERROR
+        "Brak submodulu SDIO_RPI2. Uruchom w katalogu glownym repozytorium: "
+        "git submodule update --init --recursive"
+    )
+endif()
+
 add_subdirectory(lib/SDIO_RPI2/src)
 
 get_target_property(SDIO_RPI2_INCLUDE_DIRS

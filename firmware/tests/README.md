@@ -15,11 +15,13 @@ Obecny zestaw obejmuje:
 Zależności Ruby są przypięte w `Gemfile.lock`. Należy zainstalować je raz,
 wykonując w tym katalogu:
 
-```powershell
+```console
 bundle install
 ```
 
-Uruchamianie wybranych grup:
+### Windows
+
+Uruchamianie wybranych grup w PowerShell lub `cmd.exe`:
 
 ```powershell
 # Tylko testy jednostkowe
@@ -36,6 +38,24 @@ Pojedynczy plik można uruchomić zadaniem `test:nazwa_pliku`, na przykład:
 
 ```powershell
 .\run_tests.cmd test:test_micro_sd_worker
+```
+
+### Linux i macOS
+
+Skrypt POSIX przyjmuje te same zadania Ceedling:
+
+```bash
+# Tylko testy jednostkowe
+./run_tests.sh "test:path[unit]"
+
+# Tylko testy integracyjne
+./run_tests.sh "test:path[integration]"
+
+# Wszystkie testy
+./run_tests.sh test:all
+
+# Pojedynczy plik
+./run_tests.sh test:test_micro_sd_worker
 ```
 
 Artefakty są zapisywane w `tests/build/` i ignorowane przez Git.
