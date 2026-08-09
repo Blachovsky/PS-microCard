@@ -60,9 +60,9 @@
           "hatch_smoothing_level": 0,
           "hatch_smoothing_value": 0.1,
           "hatch_thickness": 1.0,
-          "min_clearance": 0.5,
+          "min_clearance": 0.15,
           "min_island_area": 10.0,
-          "min_thickness": 0.25,
+          "min_thickness": 0.15,
           "pad_connection": 2,
           "remove_islands": 0,
           "thermal_relief_gap": 0.5,
@@ -225,6 +225,7 @@
         0.25,
         0.3,
         0.4,
+        0.6,
         0.8
       ],
       "tuning_pattern_settings": {
@@ -544,7 +545,7 @@
     "classes": [
       {
         "bus_width": 12,
-        "clearance": 0.2,
+        "clearance": 0.15,
         "diff_pair_gap": 0.2,
         "diff_pair_via_gap": 0.25,
         "diff_pair_width": 0.2,
@@ -562,7 +563,7 @@
         "wire_width": 6
       },
       {
-        "clearance": 0.2,
+        "clearance": 0.15,
         "diff_pair_gap": 0.2,
         "diff_pair_width": 0.2,
         "microvia_diameter": 0.4,
@@ -577,7 +578,7 @@
         "via_drill": 0.4
       },
       {
-        "clearance": 0.2,
+        "clearance": 0.15,
         "diff_pair_gap": 0.2,
         "diff_pair_width": 0.2,
         "microvia_diameter": 0.4,
@@ -586,13 +587,13 @@
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "priority": 3,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.3,
+        "track_width": 0.2,
         "tuning_profile": "",
         "via_diameter": 0.6,
         "via_drill": 0.4
       },
       {
-        "clearance": 0.2,
+        "clearance": 0.15,
         "diff_pair_gap": 0.2,
         "diff_pair_width": 0.2,
         "microvia_diameter": 0.4,
@@ -601,7 +602,7 @@
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "priority": 2,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.5,
+        "track_width": 0.3,
         "tuning_profile": "",
         "via_diameter": 0.6,
         "via_drill": 0.4
@@ -671,6 +672,10 @@
       {
         "netclass": "SPI",
         "pattern": "/PS1_*_DBG"
+      },
+      {
+        "netclass": "1V1",
+        "pattern": "+1V1"
       }
     ]
   },
@@ -822,7 +827,7 @@
         "uuid": "29493766-bdc1-49ff-baed-532557be2583"
       }
     ],
-    "used_designators": "U1-14,#FLG1-5,R1-44,J1-16,S1-6,C1-45,#PWR1-95,Y1-2,SW1-6,L1,TP1-20",
+    "used_designators": "U1-14,J1-16,#FLG1-5,R1-44,C1-45,S1-6,#PWR1-95,Y1-2,SW1-6,L1,TP1-20",
     "variants": []
   },
   "sheets": [
