@@ -12522,7 +12522,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 74.93 294.64 0)
 			(hide yes)
 			(show_name no)
@@ -12535,6 +12535,28 @@
 		)
 		(property "Description" "Resistor"
 			(at 74.93 294.64 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 74.93 294.64 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-0710KL"
+			(at 74.93 294.64 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12974,7 +12996,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://pim.murata.com/asset/pim4/ceramicCapacitorSMD/GRM155R71C224KA12-01A-EN_PDF_CERAMICCAPACITORSMD"
 			(at 204.47 323.85 0)
 			(hide yes)
 			(show_name no)
@@ -12986,6 +13008,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 204.47 323.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 204.47 323.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C224KA12D "
 			(at 204.47 323.85 0)
 			(hide yes)
 			(show_name no)
@@ -13460,7 +13504,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 382.27 50.8 0)
 			(hide yes)
 			(show_name no)
@@ -13473,6 +13517,28 @@
 		)
 		(property "Description" "Resistor"
 			(at 382.27 50.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 382.27 50.8 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-071KL "
+			(at 382.27 50.8 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13542,7 +13608,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 327.66 50.8 0)
 			(hide yes)
 			(show_name no)
@@ -13554,6 +13620,28 @@
 			)
 		)
 		(property "Description" "Resistor"
+			(at 327.66 50.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 327.66 50.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-0710KL"
 			(at 327.66 50.8 0)
 			(hide yes)
 			(show_name no)
@@ -13622,7 +13710,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 353.06 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -13635,6 +13723,28 @@
 		)
 		(property "Description" "Resistor"
 			(at 353.06 76.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 353.06 76.2 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-071KL "
+			(at 353.06 76.2 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13702,7 +13812,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 255.27 153.67 0)
 			(hide yes)
 			(show_name no)
@@ -13715,6 +13825,28 @@
 		)
 		(property "Description" "Resistor"
 			(at 255.27 153.67 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 255.27 153.67 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-07100KL "
+			(at 255.27 153.67 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13784,7 +13916,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://pim.murata.com/asset/pim4/ceramicCapacitorSMD/GRM155R71C224KA12-01A-EN_PDF_CERAMICCAPACITORSMD"
 			(at 143.51 321.31 0)
 			(hide yes)
 			(show_name no)
@@ -13796,6 +13928,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 143.51 321.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 143.51 321.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C224KA12D "
 			(at 143.51 321.31 0)
 			(hide yes)
 			(show_name no)
@@ -13944,7 +14098,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 424.18 138.43 0)
 			(hide yes)
 			(show_name no)
@@ -13956,6 +14110,28 @@
 			)
 		)
 		(property "Description" "Resistor"
+			(at 424.18 138.43 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 424.18 138.43 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-0710KL"
 			(at 424.18 138.43 0)
 			(hide yes)
 			(show_name no)
@@ -14025,7 +14201,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 260.35 149.86 0)
 			(hide yes)
 			(show_name no)
@@ -14037,6 +14213,28 @@
 			)
 		)
 		(property "Description" "Resistor"
+			(at 260.35 149.86 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 260.35 149.86 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-0720KL"
 			(at 260.35 149.86 0)
 			(hide yes)
 			(show_name no)
@@ -14372,7 +14570,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 314.96 234.95 0)
 			(hide yes)
 			(show_name no)
@@ -14385,6 +14583,28 @@
 		)
 		(property "Description" "Resistor"
 			(at 314.96 234.95 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 314.96 234.95 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-0727RL"
+			(at 314.96 234.95 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15028,7 +15248,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/5926/1/cx5r_KGM.pdf"
 			(at 101.6 314.96 0)
 			(hide yes)
 			(show_name no)
@@ -15040,6 +15260,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 101.6 314.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "KYOCERA AVX "
+			(at 101.6 314.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "KGM05CR51A475KH"
 			(at 101.6 314.96 0)
 			(hide yes)
 			(show_name no)
@@ -15109,7 +15351,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM155R71C104KA88_01A.pdf"
 			(at 427.99 157.48 0)
 			(hide yes)
 			(show_name no)
@@ -15121,6 +15363,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 427.99 157.48 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 427.99 157.48 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C104KA88D"
 			(at 427.99 157.48 0)
 			(hide yes)
 			(show_name no)
@@ -15348,7 +15612,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 378.46 147.32 0)
 			(hide yes)
 			(show_name no)
@@ -15360,6 +15624,28 @@
 			)
 		)
 		(property "Description" "Resistor"
+			(at 378.46 147.32 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 378.46 147.32 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-07698RL"
 			(at 378.46 147.32 0)
 			(hide yes)
 			(show_name no)
@@ -15430,7 +15716,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/5926/1/cx5r_KGM.pdf"
 			(at 59.69 309.88 0)
 			(hide yes)
 			(show_name no)
@@ -15442,6 +15728,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 59.69 309.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "KYOCERA AVX "
+			(at 59.69 309.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "KGM05CR51A475KH"
 			(at 59.69 309.88 0)
 			(hide yes)
 			(show_name no)
@@ -15746,7 +16054,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 36.83 132.08 0)
 			(hide yes)
 			(show_name no)
@@ -15759,6 +16067,28 @@
 		)
 		(property "Description" "Resistor"
 			(at 36.83 132.08 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 36.83 132.08 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-070RL "
+			(at 36.83 132.08 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15929,7 +16259,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/5926/1/cx5r_KGM.pdf"
 			(at 256.54 162.56 0)
 			(hide yes)
 			(show_name no)
@@ -15941,6 +16271,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 256.54 162.56 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "KYOCERA AVX "
+			(at 256.54 162.56 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "KGM05CR51A475KH"
 			(at 256.54 162.56 0)
 			(hide yes)
 			(show_name no)
@@ -16011,7 +16363,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://pim.murata.com/asset/pim4/ceramicCapacitorSMD/GRM155R71C224KA12-01A-EN_PDF_CERAMICCAPACITORSMD"
 			(at 309.88 162.56 0)
 			(hide yes)
 			(show_name no)
@@ -16023,6 +16375,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 309.88 162.56 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 309.88 162.56 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C224KA12D "
 			(at 309.88 162.56 0)
 			(hide yes)
 			(show_name no)
@@ -16169,7 +16543,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://pim.murata.com/asset/pim4/ceramicCapacitorSMD/GRM155R71C224KA12-01A-EN_PDF_CERAMICCAPACITORSMD"
 			(at 30.48 325.12 0)
 			(hide yes)
 			(show_name no)
@@ -16181,6 +16555,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 30.48 325.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 30.48 325.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C224KA12D "
 			(at 30.48 325.12 0)
 			(hide yes)
 			(show_name no)
@@ -16330,7 +16726,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/system/files/dam/doc/product/capacitor/ceramic/mlcc/catalog/mlcc_automotive_general_en.pdf?ref_disty=mouser"
 			(at 318.77 40.64 0)
 			(hide yes)
 			(show_name no)
@@ -16342,6 +16738,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 318.77 40.64 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "TDK"
+			(at 318.77 40.64 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "CGA4J3X7R1A475K125AB "
 			(at 318.77 40.64 0)
 			(hide yes)
 			(show_name no)
@@ -16412,7 +16830,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/5926/1/cx5r_KGM.pdf"
 			(at 44.45 311.15 0)
 			(hide yes)
 			(show_name no)
@@ -16424,6 +16842,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 44.45 311.15 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "KYOCERA AVX "
+			(at 44.45 311.15 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "KGM05CR51A475KH"
 			(at 44.45 311.15 0)
 			(hide yes)
 			(show_name no)
@@ -16494,7 +16934,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/5926/1/cx5r_KGM.pdf"
 			(at 175.26 210.82 0)
 			(hide yes)
 			(show_name no)
@@ -16506,6 +16946,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 175.26 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "KYOCERA AVX "
+			(at 175.26 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "KGM05CR51A475KH"
 			(at 175.26 210.82 0)
 			(hide yes)
 			(show_name no)
@@ -17047,7 +17509,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM155R71C104KA88_01A.pdf"
 			(at 162.56 210.82 0)
 			(hide yes)
 			(show_name no)
@@ -17059,6 +17521,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 162.56 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 162.56 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C104KA88D"
 			(at 162.56 210.82 0)
 			(hide yes)
 			(show_name no)
@@ -17592,7 +18076,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 167.64 294.64 0)
 			(hide yes)
 			(show_name no)
@@ -17604,6 +18088,28 @@
 			)
 		)
 		(property "Description" "Resistor"
+			(at 167.64 294.64 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 167.64 294.64 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-07100KL "
 			(at 167.64 294.64 0)
 			(hide yes)
 			(show_name no)
@@ -17671,7 +18177,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/1/GRM1555C1H150JA01-01A.pdf"
 			(at 39.37 191.77 0)
 			(hide yes)
 			(show_name no)
@@ -17684,6 +18190,28 @@
 		)
 		(property "Description" "Unpolarized capacitor"
 			(at 39.37 191.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 39.37 191.77 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM1555C1H150JA01D"
+			(at 39.37 191.77 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -17994,7 +18522,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM155R71C104KA88_01A.pdf"
 			(at 222.25 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -18006,6 +18534,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 222.25 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 222.25 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C104KA88D"
 			(at 222.25 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -18321,7 +18871,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://search.murata.co.jp/Ceramy/image/img/A01X/G101/ENG/GXT155R61A105KE01-01A.pdf"
 			(at 316.23 241.3 0)
 			(hide yes)
 			(show_name no)
@@ -18333,6 +18883,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 316.23 241.3 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 316.23 241.3 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GXT155R61A105KE01D "
 			(at 316.23 241.3 0)
 			(hide yes)
 			(show_name no)
@@ -18482,7 +19054,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/5926/1/cx5r_KGM.pdf"
 			(at 41.91 67.31 0)
 			(hide yes)
 			(show_name no)
@@ -18494,6 +19066,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 41.91 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "KYOCERA AVX "
+			(at 41.91 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "KGM05CR51A475KH"
 			(at 41.91 67.31 0)
 			(hide yes)
 			(show_name no)
@@ -18953,7 +19547,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 59.69 294.64 0)
 			(hide yes)
 			(show_name no)
@@ -18966,6 +19560,28 @@
 		)
 		(property "Description" "Resistor"
 			(at 59.69 294.64 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 59.69 294.64 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-0710KL"
+			(at 59.69 294.64 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -19155,7 +19771,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 303.53 232.41 0)
 			(hide yes)
 			(show_name no)
@@ -19168,6 +19784,28 @@
 		)
 		(property "Description" "Resistor"
 			(at 303.53 232.41 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 303.53 232.41 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-0727RL"
+			(at 303.53 232.41 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -19602,7 +20240,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM155R71C104KA88_01A.pdf"
 			(at 187.96 210.82 0)
 			(hide yes)
 			(show_name no)
@@ -19614,6 +20252,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 187.96 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 187.96 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C104KA88D"
 			(at 187.96 210.82 0)
 			(hide yes)
 			(show_name no)
@@ -19761,7 +20421,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM155R71C104KA88_01A.pdf"
 			(at 196.85 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -19773,6 +20433,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 196.85 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 196.85 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C104KA88D"
 			(at 196.85 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -20077,7 +20759,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM21BR61C106ME15_01A.pdf"
 			(at 237.49 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -20089,6 +20771,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 237.49 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 237.49 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM21BR61C106ME15L "
 			(at 237.49 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -20159,7 +20863,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM155R71C104KA88_01A.pdf"
 			(at 149.86 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -20171,6 +20875,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 149.86 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 149.86 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C104KA88D"
 			(at 149.86 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -20241,7 +20967,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://pim.murata.com/asset/pim4/ceramicCapacitorSMD/GRM155R71C224KA12-01A-EN_PDF_CERAMICCAPACITORSMD"
 			(at 30.48 317.5 0)
 			(hide yes)
 			(show_name no)
@@ -20253,6 +20979,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 30.48 317.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 30.48 317.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C224KA12D "
 			(at 30.48 317.5 0)
 			(hide yes)
 			(show_name no)
@@ -20323,7 +21071,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM155R71C104KA88_01A.pdf"
 			(at 161.29 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -20335,6 +21083,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 161.29 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 161.29 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C104KA88D"
 			(at 161.29 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -20480,7 +21250,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 462.28 109.22 0)
 			(hide yes)
 			(show_name no)
@@ -20492,6 +21262,28 @@
 			)
 		)
 		(property "Description" "Resistor"
+			(at 462.28 109.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 462.28 109.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-0747RL "
 			(at 462.28 109.22 0)
 			(hide yes)
 			(show_name no)
@@ -20562,7 +21354,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM155R71C104KA88_01A.pdf"
 			(at 209.55 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -20574,6 +21366,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 209.55 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 209.55 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C104KA88D"
 			(at 209.55 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -20641,7 +21455,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 462.28 54.61 0)
 			(hide yes)
 			(show_name no)
@@ -20653,6 +21467,28 @@
 			)
 		)
 		(property "Description" "Resistor"
+			(at 462.28 54.61 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 462.28 54.61 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-0747RL "
 			(at 462.28 54.61 0)
 			(hide yes)
 			(show_name no)
@@ -20798,7 +21634,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 462.28 72.39 0)
 			(hide yes)
 			(show_name no)
@@ -20810,6 +21646,28 @@
 			)
 		)
 		(property "Description" "Resistor"
+			(at 462.28 72.39 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 462.28 72.39 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-0747RL "
 			(at 462.28 72.39 0)
 			(hide yes)
 			(show_name no)
@@ -21046,7 +21904,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 416.56 63.5 0)
 			(hide yes)
 			(show_name no)
@@ -21059,6 +21917,28 @@
 		)
 		(property "Description" "Resistor"
 			(at 416.56 63.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 416.56 63.5 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-071KL "
+			(at 416.56 63.5 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21128,7 +22008,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM155R71C104KA88_01A.pdf"
 			(at 172.72 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -21140,6 +22020,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 172.72 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 172.72 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C104KA88D"
 			(at 172.72 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -21287,7 +22189,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 461.01 34.29 0)
 			(hide yes)
 			(show_name no)
@@ -21299,6 +22201,28 @@
 			)
 		)
 		(property "Description" "Resistor"
+			(at 461.01 34.29 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 461.01 34.29 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-0747RL "
 			(at 461.01 34.29 0)
 			(hide yes)
 			(show_name no)
@@ -21967,7 +22891,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 175.26 300.99 0)
 			(hide yes)
 			(show_name no)
@@ -21980,6 +22904,28 @@
 		)
 		(property "Description" "Resistor"
 			(at 175.26 300.99 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 175.26 300.99 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "AA0402FR-07215KL"
+			(at 175.26 300.99 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22280,7 +23226,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/1/GRM1555C1H150JA01-01A.pdf"
 			(at 39.37 207.01 0)
 			(hide yes)
 			(show_name no)
@@ -22293,6 +23239,28 @@
 		)
 		(property "Description" "Unpolarized capacitor"
 			(at 39.37 207.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 39.37 207.01 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM1555C1H150JA01D"
+			(at 39.37 207.01 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22362,7 +23330,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM155R71C104KA88_01A.pdf"
 			(at 74.93 118.11 0)
 			(hide yes)
 			(show_name no)
@@ -22374,6 +23342,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 74.93 118.11 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 74.93 118.11 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C104KA88D"
 			(at 74.93 118.11 0)
 			(hide yes)
 			(show_name no)
@@ -22444,7 +23434,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM155R71C104KA88_01A.pdf"
 			(at 307.34 40.64 0)
 			(hide yes)
 			(show_name no)
@@ -22456,6 +23446,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 307.34 40.64 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 307.34 40.64 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C104KA88D"
 			(at 307.34 40.64 0)
 			(hide yes)
 			(show_name no)
@@ -22526,7 +23538,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM155R71C104KA88_01A.pdf"
 			(at 124.46 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -22538,6 +23550,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 124.46 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 124.46 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C104KA88D"
 			(at 124.46 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -22687,7 +23721,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/kamaya_watc-s-a0005256878-1.pdf"
 			(at 430.53 147.32 0)
 			(hide yes)
 			(show_name no)
@@ -22699,6 +23733,28 @@
 			)
 		)
 		(property "Description" "Resistor"
+			(at 430.53 147.32 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Walsin "
+			(at 430.53 147.32 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "WR04X2872FTL "
 			(at 430.53 147.32 0)
 			(hide yes)
 			(show_name no)
@@ -23188,7 +24244,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 99.06 323.85 0)
 			(hide yes)
 			(show_name no)
@@ -23200,6 +24256,28 @@
 			)
 		)
 		(property "Description" "Resistor"
+			(at 99.06 323.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 99.06 323.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-07267KL"
 			(at 99.06 323.85 0)
 			(hide yes)
 			(show_name no)
@@ -23270,7 +24348,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM155R71C104KA88_01A.pdf"
 			(at 137.16 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -23282,6 +24360,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 137.16 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 137.16 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C104KA88D"
 			(at 137.16 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -23430,7 +24530,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/5926/1/cx5r_KGM.pdf"
 			(at 29.21 67.31 0)
 			(hide yes)
 			(show_name no)
@@ -23442,6 +24542,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 29.21 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "KYOCERA AVX "
+			(at 29.21 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "KGM05CR51A475KH"
 			(at 29.21 67.31 0)
 			(hide yes)
 			(show_name no)
@@ -23813,7 +24935,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/5926/1/cx5r_KGM.pdf"
 			(at 106.68 314.96 0)
 			(hide yes)
 			(show_name no)
@@ -23825,6 +24947,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 106.68 314.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "KYOCERA AVX "
+			(at 106.68 314.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "KGM05CR51A475KH"
 			(at 106.68 314.96 0)
 			(hide yes)
 			(show_name no)
@@ -23895,7 +25039,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM155R71C104KA88_01A.pdf"
 			(at 184.15 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -23907,6 +25051,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 184.15 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 184.15 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C104KA88D"
 			(at 184.15 242.57 0)
 			(hide yes)
 			(show_name no)
@@ -24536,7 +25702,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://search.murata.co.jp/Ceramy/image/img/A01X/G101/ENG/GXT155R61A105KE01-01A.pdf"
 			(at 369.57 229.87 0)
 			(hide yes)
 			(show_name no)
@@ -24548,6 +25714,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 369.57 229.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 369.57 229.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GXT155R61A105KE01D "
 			(at 369.57 229.87 0)
 			(hide yes)
 			(show_name no)
@@ -24774,7 +25962,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 246.38 66.04 0)
 			(hide yes)
 			(show_name no)
@@ -24786,6 +25974,28 @@
 			)
 		)
 		(property "Description" "Resistor"
+			(at 246.38 66.04 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 246.38 66.04 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-0710KL"
 			(at 246.38 66.04 0)
 			(hide yes)
 			(show_name no)
@@ -25350,7 +26560,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 359.41 31.75 0)
 			(hide yes)
 			(show_name no)
@@ -25363,6 +26573,28 @@
 		)
 		(property "Description" "Resistor"
 			(at 359.41 31.75 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 359.41 31.75 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-071KL "
+			(at 359.41 31.75 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -25432,7 +26664,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM155R71C104KA88_01A.pdf"
 			(at 373.38 170.18 0)
 			(hide yes)
 			(show_name no)
@@ -25444,6 +26676,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 373.38 170.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 373.38 170.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C104KA88D"
 			(at 373.38 170.18 0)
 			(hide yes)
 			(show_name no)
@@ -25590,7 +26844,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 78.74 207.01 0)
 			(hide yes)
 			(show_name no)
@@ -25603,6 +26857,28 @@
 		)
 		(property "Description" "Resistor"
 			(at 78.74 207.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 78.74 207.01 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-071KL "
+			(at 78.74 207.01 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -25829,7 +27105,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/76/2/GRM155R71C104KA88_01A.pdf"
 			(at 373.38 148.59 0)
 			(hide yes)
 			(show_name no)
@@ -25841,6 +27117,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 373.38 148.59 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "Murata Electronics "
+			(at 373.38 148.59 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "GRM155R71C104KA88D"
 			(at 373.38 148.59 0)
 			(hide yes)
 			(show_name no)
@@ -25908,7 +27206,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 462.28 91.44 0)
 			(hide yes)
 			(show_name no)
@@ -25920,6 +27218,28 @@
 			)
 		)
 		(property "Description" "Resistor"
+			(at 462.28 91.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 462.28 91.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-0747RL "
 			(at 462.28 91.44 0)
 			(hide yes)
 			(show_name no)
@@ -26073,7 +27393,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.pl/datasheet/3/5926/1/cx5r_KGM.pdf"
 			(at 80.01 54.61 0)
 			(hide yes)
 			(show_name no)
@@ -26085,6 +27405,28 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 80.01 54.61 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "KYOCERA AVX "
+			(at 80.01 54.61 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "KGM05CR51A475KH"
 			(at 80.01 54.61 0)
 			(hide yes)
 			(show_name no)
@@ -26154,7 +27496,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf"
 			(at 66.04 50.8 0)
 			(hide yes)
 			(show_name no)
@@ -26167,6 +27509,28 @@
 		)
 		(property "Description" "Resistor"
 			(at 66.04 50.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MF" "YAGEO "
+			(at 66.04 50.8 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MP" "RC0402FR-0733RL "
+			(at 66.04 50.8 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
