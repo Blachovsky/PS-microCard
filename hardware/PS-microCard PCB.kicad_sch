@@ -12996,7 +12996,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://pim.murata.com/asset/pim4/ceramicCapacitorSMD/GRM155R71C224KA12-01A-EN_PDF_CERAMICCAPACITORSMD"
+		(property "Datasheet" "https://pim.murata.com/asset/pim4/ceramicCapacitorSMD/GRM155R60J106ME15-01A-EN_PDF_CERAMICCAPACITORSMD"
 			(at 204.47 323.85 0)
 			(hide yes)
 			(show_name no)
@@ -13029,7 +13029,7 @@
 				)
 			)
 		)
-		(property "MP" "GRM155R71C224KA12D "
+		(property "MP" "GRM155R60J106ME15D"
 			(at 204.47 323.85 0)
 			(hide yes)
 			(show_name no)
@@ -13916,7 +13916,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://pim.murata.com/asset/pim4/ceramicCapacitorSMD/GRM155R71C224KA12-01A-EN_PDF_CERAMICCAPACITORSMD"
+		(property "Datasheet" "https://pim.murata.com/asset/pim4/ceramicCapacitorSMD/GRM155R60J106ME15-01A-EN_PDF_CERAMICCAPACITORSMD"
 			(at 143.51 321.31 0)
 			(hide yes)
 			(show_name no)
@@ -13949,7 +13949,7 @@
 				)
 			)
 		)
-		(property "MP" "GRM155R71C224KA12D "
+		(property "MP" "GRM155R60J106ME15D"
 			(at 143.51 321.31 0)
 			(hide yes)
 			(show_name no)
@@ -16363,7 +16363,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://pim.murata.com/asset/pim4/ceramicCapacitorSMD/GRM155R71C224KA12-01A-EN_PDF_CERAMICCAPACITORSMD"
+		(property "Datasheet" "https://pim.murata.com/asset/pim4/ceramicCapacitorSMD/GRM155R60J106ME15-01A-EN_PDF_CERAMICCAPACITORSMD"
 			(at 309.88 162.56 0)
 			(hide yes)
 			(show_name no)
@@ -16396,7 +16396,7 @@
 				)
 			)
 		)
-		(property "MP" "GRM155R71C224KA12D "
+		(property "MP" "GRM155R60J106ME15D"
 			(at 309.88 162.56 0)
 			(hide yes)
 			(show_name no)
