@@ -119,14 +119,6 @@ void micro_sd_clear_card_removed_event(void) {
     card_removed_latched = false;
 }
 
-micro_sd_result_t micro_sd_storage_result(void) {
-    if (!micro_sd_card_present()) {
-        return MICRO_SD_ERROR_CARD_NOT_PRESENT;
-    }
-
-    return storage_result;
-}
-
 /* Shared path and name helpers used by image management. */
 
 char micro_sd_internal_ascii_upper(char c) {
