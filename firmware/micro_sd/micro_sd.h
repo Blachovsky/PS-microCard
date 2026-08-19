@@ -50,7 +50,6 @@ void micro_sd_card_detect_init(void);
 bool micro_sd_card_present(void);
 bool micro_sd_card_removed_event(void);
 void micro_sd_clear_card_removed_event(void);
-micro_sd_result_t micro_sd_storage_result(void);
 void micro_sd_handle_card_unavailable(void);
 micro_sd_result_t micro_sd_load_or_create_initial_image(const char *path);
 micro_sd_result_t micro_sd_check_active_image_accessible(void);
