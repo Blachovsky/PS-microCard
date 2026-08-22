@@ -15202,7 +15202,7 @@
 				)
 			)
 		)
-		(property "MP" "RC0603FR-0728K7L"
+		(property "MP" "RT0402FRE0728K7L "
 			(at 317.5 215.9 0)
 			(hide yes)
 			(show_name no)
@@ -16881,7 +16881,7 @@
 				)
 			)
 		)
-		(property "MF" "Murata Electronics "
+		(property "MF" "SAMSUNG"
 			(at 317.5 200.66 0)
 			(hide yes)
 			(show_name no)
@@ -16892,7 +16892,7 @@
 				)
 			)
 		)
-		(property "MP" "GRM155R71C104KA88D"
+		(property "MP" "CL05A105KO5NNNC "
 			(at 317.5 200.66 0)
 			(hide yes)
 			(show_name no)
@@ -22852,7 +22852,7 @@
 				)
 			)
 		)
-		(property "Value" "214k"
+		(property "Value" "215k"
 			(at 175.26 297.18 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -23585,7 +23585,7 @@
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp yes)
@@ -24637,7 +24637,7 @@
 				)
 			)
 		)
-		(property "MF" "Murata Electronics "
+		(property "MF" "SAMSUNG"
 			(at 328.93 200.66 0)
 			(hide yes)
 			(show_name no)
@@ -24648,7 +24648,7 @@
 				)
 			)
 		)
-		(property "MP" "GRM155R71C104KA88D"
+		(property "MP" "CL05A105KO5NNNC "
 			(at 328.93 200.66 0)
 			(hide yes)
 			(show_name no)
@@ -25906,7 +25906,7 @@
 				)
 			)
 		)
-		(property "Value" "DNF"
+		(property "Value" "0"
 			(at 37.084 116.586 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -26787,7 +26787,7 @@
 				(justify right)
 			)
 		)
-		(property "Value" "DNF"
+		(property "Value" "0"
 			(at 60.96 119.3799 0)
 			(show_name no)
 			(do_not_autoplace no)
