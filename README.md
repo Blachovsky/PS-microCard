@@ -1,83 +1,228 @@
 [![Firmware build](https://github.com/Blachovsky/PS-microCard/actions/workflows/build.yml/badge.svg)](https://github.com/Blachovsky/PS-microCard/actions/workflows/build.yml)
 [![Firmware tests](https://github.com/Blachovsky/PS-microCard/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Blachovsky/PS-microCard/actions/workflows/tests.yml)
 
-# PS1 microSD Memory Card
+# PS-microCard
 
-## Szybki start w Visual Studio Code
+**An RP2350-based PlayStation 1 memory card emulator with microSD-backed virtual cards, an OLED user interface and a custom PCB designed in KiCad.**
 
-Do zbudowania i uruchomienia firmware najprościej użyć oficjalnego rozszerzenia
-**Raspberry Pi Pico** dla Visual Studio Code. Rozszerzenie pobiera i konfiguruje
-Pico SDK, kompilator, CMake, Ninja oraz narzędzia do programowania płytki.
+PS-microCard is an embedded hardware and firmware project that replaces a standard PlayStation 1 memory card with a programmable device capable of storing and switching multiple card images on a microSD card.
 
-### Wymagania na Linuxie
+The project combines real-time console communication, RP2350 PIO, dual-core firmware, persistent storage, a small on-device UI, automated host-side testing, and custom electronics design.
 
-Oficjalne rozszerzenie obsługuje systemy Linux x64 i arm64. Wymaga Pythona
-3.10 lub nowszego, Git 2.28 lub nowszego oraz programu `tar`. Do debugowania
-na komputerach x86_64 przydaje się również `gdb-multiarch`.
+> **Project status:** the firmware and custom PCB are under active development. The custom PCB has been designed but has not yet been assembled. Firmware builds currently target the RP2350-based Raspberry Pi Pico 2 W development platform.
 
-Na Ubuntu potrzebne narzędzia i biblioteki można zainstalować poleceniem:
+<p align="center">
+  <img src="images/PCB_render.png" alt="PS-microCard PCB render" width="480">
+</p>
+<p align="center">
+  <i>Custom PCB designed in KiCad. Hardware prototype not yet assembled.</i>
+</p>
+
+## What it does
+
+- Emulates a PlayStation 1 memory card at the console interface.
+- Stores standard memory-card images on a microSD card.
+- Allows multiple virtual card images to be created, selected, and deleted.
+- Provides an OLED menu controlled with two physical buttons.
+- Displays save information stored in the currently selected card image.
+- Keeps time-critical PlayStation communication separate from slower storage and UI work.
+- Handles storage failures and SD-card removal without treating unconfirmed writes as safely persisted.
+
+## Project highlights
+
+### Real-time embedded firmware
+
+The PlayStation memory-card interface is serviced on one RP2350 core, with PIO used for the low-level serial transport. Time-sensitive code is kept independent from filesystem and UI operations so that storage activity does not interfere with console communication.
+
+### Dual-core architecture
+
+The firmware splits responsibilities between the two RP2350 cores:
+
+- **Core 0** — PlayStation bus handling and memory-card emulation.
+- **Core 1** — microSD persistence, image management, OLED UI, and button input.
+
+This separation keeps latency-sensitive work predictable while allowing the device to perform filesystem operations in parallel.
+
+### Failure-aware persistence
+
+Game saves are first reflected in the in-memory card image and are then persisted to microSD by a background worker. The firmware tracks whether modified frames have actually been synchronized to storage and can retry unconfirmed changes after recoverable failures.
+
+### Custom hardware
+
+The repository includes a custom RP2350-based PCB designed in **KiCad**, together with the schematic, PCB layout, component footprints, symbols, and 3D models used by the design.
+
+### Automated testing and CI
+
+The firmware currently includes **75 host-side tests**:
+
+- **61 unit tests**
+- **14 integration tests**
+
+The integration suite exercises complete flows across the PS1 protocol layer, in-memory card state, and microSD persistence logic, including error and recovery scenarios.
+
+GitHub Actions automatically builds the RP2350 firmware and runs the complete host-side test suite on pushes and pull requests.
+
+## Architecture at a glance
+
+```mermaid
+flowchart LR
+    PS1[PlayStation 1] --> BUS[PS1 memory-card bus<br/>PIO + Core 0]
+    BUS <--> RAM[Card image in RAM]
+
+    RAM <--> STORAGE[Persistence worker<br/>Core 1]
+    STORAGE <--> SD[microSD / MCR images]
+
+    BUTTONS[Buttons] --> UI[OLED menu<br/>Core 1]
+    UI --> STORAGE
+```
+
+Detailed protocol behavior, timing considerations, concurrency design, persistence guarantees, and hardware design notes are intended to live in the project documentation rather than in this README.
+
+## Repository structure
+
+```text
+PS-microCard/
+├── firmware/              Embedded C firmware for the RP2350
+│   ├── board/             Board and peripheral configuration
+│   ├── drivers/           OLED and low-level device drivers
+│   ├── menu/              OLED UI and menu controller
+│   ├── micro_sd/          Image management and persistence worker
+│   ├── ps1/               PS1 memory-card protocol and PIO transport
+│   └── tests/             Host-side unit and integration tests
+├── hardware/              KiCad schematic, PCB and project libraries
+├── docs/                  Technical project documentation
+└── .github/workflows/     Firmware build and test automation
+```
+
+## Technology stack
+
+| Area | Technologies |
+| --- | --- |
+| MCU | RP2350 / Raspberry Pi Pico 2 W development target |
+| Firmware | C11, Raspberry Pi Pico SDK |
+| Real-time I/O | RP2350 PIO, GPIO |
+| Concurrency | RP2350 multicore |
+| Storage | microSD, FatFs |
+| User interface | SSD1306-compatible 128×64 OLED, physical buttons |
+| Hardware design | KiCad |
+| Testing | Ceedling, Unity, CMock |
+| CI | GitHub Actions |
+| Build system | CMake, Ninja |
+
+## Testing
+
+Host-side tests are intentionally used to verify as much firmware behavior as possible without requiring physical hardware. Hardware-specific boundaries such as GPIO, timing, and the filesystem are replaced with test doubles where appropriate, while production modules are compiled together for integration scenarios.
+
+Examples of covered scenarios include:
+
+- normal PlayStation write/read flows,
+- persistence across a simulated firmware restart,
+- multiple writes before storage synchronization,
+- filesystem write and sync failures,
+- SD-card removal during a write,
+- recovery after the SD card is reinserted,
+- switching between virtual card images without exposing a partial image.
+
+See [`firmware/tests/README.md`](firmware/tests/README.md) for the complete test matrix and instructions for running individual test groups.
+
+## Building the firmware
+
+### Recommended setup: Visual Studio Code
+
+The easiest development setup uses the official **Raspberry Pi Pico** extension for Visual Studio Code. It can install and configure the Pico SDK, ARM toolchain, CMake, Ninja, and device-programming tools.
+
+The current project configuration uses:
+
+- Pico SDK **2.2.0**
+- ARM toolchain **14_2_Rel1**
+- Raspberry Pi Pico 2 W (`pico2_w`) as the development target
+
+### Linux prerequisites
+
+On Ubuntu, install the required tools and libraries with:
 
 ```bash
 sudo apt update
 sudo apt install git python3 tar gdb-multiarch libftdi1-2 libhidapi-hidraw0
 ```
 
-Aby **Run Project**, **Flash** i debugowanie działały bez `sudo`, zainstaluj
-reguły `udev` dla picotool i OpenOCD, a następnie odłącz i ponownie podłącz
-płytkę lub Debug Probe. Szczegóły znajdują się w
-[dokumentacji rozszerzenia Raspberry Pi Pico](https://github.com/raspberrypi/pico-vscode#requirements-by-os).
+To use **Run Project**, **Flash**, and debugging without `sudo`, install the appropriate `udev` rules for picotool and OpenOCD. See the [Raspberry Pi Pico VS Code extension documentation](https://github.com/raspberrypi/pico-vscode#requirements-by-os) for details.
 
-### 1. Sklonuj repozytorium razem z submodułami
+### 1. Clone the repository with submodules
 
 ```console
 git clone --recurse-submodules https://github.com/Blachovsky/PS-microCard.git
 cd PS-microCard
 ```
 
-Jeżeli repozytorium zostało wcześniej sklonowane bez submodułów, uzupełnij je:
+If the repository was cloned without submodules:
 
 ```console
 git submodule update --init --recursive
 ```
 
-### 2. Otwórz katalog firmware
+### 2. Open the firmware directory
 
-Otwórz w VS Code katalog `firmware`, a nie katalog główny repozytorium. To w nim
-znajdują się główny `CMakeLists.txt` oraz konfiguracja `.vscode`:
+Open `firmware/` rather than the repository root in VS Code:
 
 ```console
 code firmware
 ```
 
-Po otwarciu katalogu zaakceptuj instalację rekomendowanych rozszerzeń. Jeżeli
-VS Code nie wyświetli powiadomienia, otwórz panel Extensions i zainstaluj
-rozszerzenie **Raspberry Pi Pico** (`raspberry-pi.raspberry-pi-pico`).
+Install the recommended **Raspberry Pi Pico** extension (`raspberry-pi.raspberry-pi-pico`) if VS Code does not offer to install it automatically.
 
-### 3. Zaimportuj projekt, jeśli nie został wykryty automatycznie
+### 3. Import the project if necessary
 
-Zwykle rozszerzenie automatycznie rozpozna projekt i skonfiguruje go po otwarciu
-katalogu. Jeżeli tak się nie stanie:
+The extension should normally detect the project automatically. If it does not:
 
-1. Otwórz panel **Raspberry Pi Pico** na pasku bocznym.
-2. Wybierz **Import Project**.
-3. Jako lokalizację projektu wskaż otwarty katalog `firmware`.
-4. Wybierz Pico SDK `2.2.0`, toolchain `14_2_Rel1` oraz płytkę
-   **Pico 2 W** (`pico2_w`).
-5. Pozostaw integrację z CMake Tools wyłączoną.
-6. Zakończ import i poczekaj na pobranie narzędzi oraz konfigurację CMake.
+1. Open the **Raspberry Pi Pico** panel.
+2. Select **Import Project**.
+3. Choose the `firmware` directory.
+4. Select Pico SDK `2.2.0`, toolchain `14_2_Rel1`, and **Pico 2 W** (`pico2_w`).
+5. Leave CMake Tools integration disabled.
+6. Complete the import and allow the extension to configure the project.
 
-### 4. Zbuduj i uruchom firmware
+### 4. Build and run
 
-- **Compile Project** buduje firmware i tworzy między innymi
-  `firmware/build/main.uf2`.
-- **Run Project** programuje podłączoną płytkę i uruchamia firmware.
-- **Debug Project** uruchamia sesję debugowania przez zgodny interfejs SWD.
+- **Compile Project** builds the firmware and generates `firmware/build/main.uf2`.
+- **Run Project** flashes and starts the firmware on a connected board.
+- **Debug Project** starts an SWD debugging session using a compatible probe.
 
-Przy pierwszym programowaniu przez USB może być konieczne podłączenie płytki
-z wciśniętym przyciskiem **BOOTSEL**. Pierwsza konfiguracja może potrwać kilka
-minut, ponieważ rozszerzenie pobiera SDK i cały toolchain.
+For the first USB flash, the board may need to be connected while holding **BOOTSEL**.
 
-## Testy hostowe
+## Running host-side tests
 
-Instrukcja instalacji i uruchamiania testów jednostkowych oraz integracyjnych
-znajduje się w [`firmware/tests/README.md`](firmware/tests/README.md).
+The test suite is located in [`firmware/tests`](firmware/tests).
+
+On Linux or macOS:
+
+```bash
+cd firmware/tests
+bundle config set --local path vendor/bundle
+bundle install
+./run_tests.sh test:all
+```
+
+On Windows:
+
+```powershell
+cd firmware/tests
+bundle config set --local path vendor/bundle
+bundle install
+.\run_tests.cmd test:all
+```
+
+## Documentation
+
+More detailed engineering documentation is being developed in [`docs/`](docs/). It is intended to cover topics such as:
+
+- PlayStation memory-card protocol behavior,
+- PIO transport and timing,
+- multicore synchronization,
+- storage consistency and failure recovery,
+- hardware architecture and design decisions,
+- hardware validation and test methodology.
+
+---
+
+This project is primarily an exploration of **embedded systems engineering, real-time communication, robust persistent storage, firmware testing, and custom hardware design** on the RP2350 platform.
