@@ -81,6 +81,11 @@ time, and the filesystem remain simulated. The file model distinguishes data
 written by `f_write` from data that becomes durable only after a successful
 `f_sync`.
 
+The pipeline support layer does not compile `main.c`, `menu.c`, `micro_sd.c`,
+the board configuration, OLED driver, or production PIO program. It supplies
+its own lifecycle, mount/card-presence/path model and automatically acknowledges
+the image-switch pause that real firmware negotiates with Core 0.
+
 ## Unit tests
 
 ### `test_ps1_card_emulator.c`
@@ -128,9 +133,9 @@ The host tests verify the parser and the pipelined transport contract: the first
 `0x81` byte is received without an ACK, and each subsequent response is
 prepared before the ACK that opens the next byte. Tests named
 `hardware_xfer_*` exercise only the reference bit-bang transport compiled for
-`UNIT_TEST`. The production PIO state machines are verified by compiling the
-firmware and require final validation on the target hardware or with a logic
-analyzer.
+`UNIT_TEST`. Compiling the production PIO state machines proves that they build;
+it does not verify their runtime timing or electrical behavior. Those properties
+require target-hardware measurements, including logic-analyzer captures.
 
 ### `test_micro_sd_worker.c`
 
@@ -188,8 +193,19 @@ an independent test executable.
 | `test_pipeline_partial_batch_write_failure.c` — `test_pipeline_failure_on_third_frame_recovers_entire_batch` | A failure on the third `f_write` does not lose frames 12 and 13, and after recovery the whole image matches RAM. |
 | `test_pipeline_sync_failure.c` — `test_pipeline_sync_failure_keeps_written_frame_unconfirmed` | A successful `f_write` followed by a failed `f_sync` leaves the frame unconfirmed and eligible for retry. |
 | `test_pipeline_sd_removal_during_write.c` — `test_pipeline_sd_removal_during_write_disconnects_ps1_safely` | Removing the SD card halfway through a frame does not create a durable partial save and safely disconnects the PS1 card interface. |
-| `test_pipeline_sd_reinsert_after_failure.c` — `test_pipeline_sd_reinsert_remounts_and_syncs_pending_frame` | Reinserting the SD card remounts storage, writes the pending frame, and restores a correct READ response. |
-| `test_pipeline_write_during_outage.c` — `test_pipeline_console_writes_during_sd_outage_sync_after_reconnect` | WRITEs performed while the SD card is unavailable remain in RAM and are synchronized after storage returns. |
+| `test_pipeline_sd_reinsert_after_failure.c` — `test_pipeline_sd_reinsert_remounts_and_syncs_pending_frame` | Directly reconnecting the simulated worker while RAM is preserved writes the pending frame and restores a correct READ response; this is not the production menu recovery path. |
+| `test_pipeline_write_during_outage.c` — `test_pipeline_console_writes_during_sd_outage_sync_after_reconnect` | Models the pre-detection window by keeping logical card presence enabled after physical storage becomes unavailable; those WRITEs remain in RAM and are synchronized after direct worker reconnect. |
 | `test_pipeline_sd_write_failure.c` — `test_pipeline_write_failure_retries_dirty_frame_after_sd_recovers` | A write failure leaves the frame dirty; after the SD card recovers, the frame is retried and confirmed. |
-| `test_pipeline_image_swap.c` — `test_pipeline_image_swap_flushes_a_and_exposes_only_b_after_delay` | Switching from image A to B flushes A, hides the card for the required delay/probe period, and exposes only B's data afterward. |
-| `test_pipeline_sd_removal_during_swap.c` — `test_pipeline_sd_removal_during_swap_never_exposes_partial_image` | Removing the SD card during an A → B swap never exposes a partial image; retrying completes with a consistent B image. |
+| `test_pipeline_image_swap.c` — `test_pipeline_image_swap_flushes_a_and_exposes_only_b_after_delay` | With the UNIT_TEST pause auto-acknowledged, switching from image A to B flushes A, hides the card for the required delay/probe period, and exposes only B afterward. |
+| `test_pipeline_sd_removal_during_swap.c` — `test_pipeline_sd_removal_during_swap_never_exposes_partial_image` | In the simulated lifecycle, removal during an A → B swap never exposes a partial image; retrying completes with a consistent B image. |
+
+## What the host tests do not cover
+
+- execution and timing of `ps1_card_bus.pio` on RP2350 hardware,
+- real dual-core scheduling, IRQ masking, XIP contention, or GPIO electrical behavior,
+- the production `menu_task_run()` storage-removal and reload path,
+- the real FatFs, SPI microSD, OLED, buttons, or custom PCB,
+- power-loss atomicity, storage endurance, or compatibility across PlayStation models.
+
+The evidence status and the remaining physical test plan are summarized in
+[`../../docs/verification.md`](../../docs/verification.md).
