@@ -18,10 +18,7 @@ The project combines real-time console communication, RP2350 PIO, dual-core firm
 <i> Custom PCB designed in KiCad. Hardware prototype not yet assembled.</i> 
 </p>
 <p align="center"> 
-<img src="https://github.com/user-attachments/assets/f54d0bfc-f955-47ab-805d-b30cb20fdbb1" alt="PS-microCard demo" width="480"> 
-</p>
-<p align="center"> 
-<i>Breadboard prototype running the firmware and OLED interface.</i> 
+<img src="https://github.com/user-attachments/assets/f54d0bfc-f955-47ab-805d-b30cb20fdbb1" alt="Breadboard prototype running the firmware and OLED interface." width="480"> 
 </p>
 
 ## What it does
