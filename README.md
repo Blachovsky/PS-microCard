@@ -11,11 +11,17 @@ The project combines real-time console communication, RP2350 PIO, dual-core firm
 
 > **Project status:** the firmware and custom PCB are under active development. The custom PCB has been designed but has not yet been assembled. Firmware builds currently target the RP2350-based Raspberry Pi Pico 2 W development platform.
 
-<p align="center">
-  <img src="images/PCB_render.png" alt="PS-microCard PCB render" width="480">
+<p align="center"> 
+<img src="images/PCB_render.png" alt="PS-microCard PCB render" width="480"> 
+</p> 
+<p align="center"> 
+<i> Custom PCB designed in KiCad. Hardware prototype not yet assembled.</i> 
 </p>
-<p align="center">
-  <i>Custom PCB designed in KiCad. Hardware prototype not yet assembled.</i>
+<p align="center"> 
+<img src="images/demo.gif" alt="PS-microCard demo" width="480"> 
+</p>
+<p align="center"> 
+<i>Breadboard prototype running the firmware and OLED interface.</i> 
 </p>
 
 ## What it does
