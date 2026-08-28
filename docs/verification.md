@@ -1,143 +1,139 @@
-# Verification strategy
+# Verification strategy and current evidence
 
-## Verification layers
+## Evidence layers
 
-PS-microCard currently uses three complementary verification layers:
+The repository currently provides:
 
-1. **host-side unit tests** for individual firmware modules,
-2. **host-side pipeline integration tests** that compile production modules together behind simulated hardware/filesystem boundaries,
-3. **target firmware build in CI** for the RP2350 platform.
+1. host unit tests for four logic/storage modules;
+2. host pipeline tests that combine four production modules with a simulated environment;
+3. a target firmware build for `pico2_w` in CI.
 
-Physical hardware verification is the remaining layer and is intentionally tracked separately.
+It does not yet provide physical PlayStation, PIO waveform, or custom-PCB validation evidence.
 
-## Current automated coverage
+## Automated test count
 
-The repository currently contains **75 host-side tests**:
+| Group | Files | Tests |
+| --- | ---: | ---: |
+| Unit | 4 | 61 |
+| Pipeline integration | 14 | 14 |
+| Total | 18 | 75 |
 
-- **61 unit tests**,
-- **14 pipeline integration tests**.
+The executable test matrix and commands are maintained in [`firmware/tests/README.md`](../firmware/tests/README.md).
 
-The detailed test matrix and commands are maintained in [`firmware/tests/README.md`](../firmware/tests/README.md).
+## What the unit tests execute
 
-## Unit-test focus
-
-### PS1 card emulator
-
-Tests cover:
-
-- valid/invalid frame addresses,
-- checksum calculation,
-- stable frame snapshots,
-- multiple writes to the same frame,
-- frame-version wraparound,
-- rollback of unconfirmed versions,
-- confirmation behavior.
-
-### PS1 bus/protocol
-
-Tests cover:
-
-- complete READ, WRITE, and STATUS exchanges,
-- first/last frame boundaries,
-- bad addresses and checksums,
-- ignored/invalid commands,
-- `CS` aborts at byte and bit boundaries,
-- clock timeout behavior,
-- LSB-first transfer behavior and ACK generation in the host reference transport.
-
-### Storage worker
-
-Tests cover:
-
-- frame offsets and exact 128-byte writes,
-- batching and the 250 ms idle sync policy,
-- `f_open`, `f_lseek`, `f_write`, `f_sync`, and `f_close` failures,
-- short writes,
-- card removal at different persistence stages,
-- retry after storage recovery,
-- replay of a partially written batch.
-
-### Image management
-
-Tests cover:
-
-- exact 131,072-byte `.MCR` creation,
-- blank-card formatting and checksums,
-- format and size validation,
-- image listing/filtering,
-- automatic `CARDxxx.MCR` naming,
-- image deletion behavior.
-
-## Pipeline integration tests
-
-The integration environment compiles the real:
-
-- `ps1_card_bus`,
-- `ps1_card_emulator`,
-- `micro_sd_image`,
-- `micro_sd_worker`
-
-modules together. Hardware, time, and FatFs are simulated at their external boundaries.
-
-Notable scenarios include:
-
-| Scenario | Property under test |
+| Production module | Main coverage |
 | --- | --- |
-| Normal WRITE → sync → READ | End-to-end persistence and protocol correctness |
-| Immediate READ before SD worker | RAM update is visible before persistence |
-| Restart after successful sync | Confirmed data survives reload |
-| Restart before sync | `f_write()` alone is not treated as durable |
-| Same frame written twice | Latest version wins |
-| Slow SD with interleaved writes | Storage converges to latest RAM state |
-| Failure mid-batch | All unconfirmed frames are replayed |
-| Sync failure | Written data remains unconfirmed |
-| SD removal during write | No durable partial save; PS1 interface disconnects safely |
-| SD reinsert | Pending frame is remounted/retried/confirmed |
-| Write during SD outage | RAM changes survive and later synchronize |
-| Image swap | A is flushed and only complete B becomes visible |
-| SD removal during swap | Partial replacement image is never exposed |
+| `ps1_card_emulator.c` | frame bounds, checksums, stable snapshots, versions, wraparound, rollback, confirmation |
+| `ps1_card_bus.c` under `UNIT_TEST` | READ/WRITE/STATUS parsing, results, aborts, reference bit-bang transfer |
+| `micro_sd_worker.c` | offsets, batches, idle sync, FatFs failures, rollback and direct worker reconnect |
+| `micro_sd_image.c` | creation, size/format checks, catalog limits, naming, deletion |
+
+Unit tests replace Pico SDK, GPIO, FatFs, time, display, and SD-library interfaces.
+
+## What the pipeline tests execute
+
+Each pipeline executable compiles the real:
+
+- `ps1_card_bus.c` under `UNIT_TEST`,
+- `ps1_card_emulator.c`,
+- `micro_sd_image.c`,
+- `micro_sd_worker.c`.
+
+The integration support supplies:
+
+- a scripted byte transport instead of PIO,
+- a RAM filesystem model with separate written and durable buffers,
+- simulated time and storage delays,
+- fake card-presence/mount/path/result functions,
+- automatic pause acknowledgement instead of a second core,
+- display/logging stubs.
+
+It does not compile `main.c`, `menu/*.c`, `micro_sd.c`, `hardware_config.c`, `oled.c`, or the PIO assembly path. It is therefore a module pipeline, not a complete firmware simulation.
+
+## Pipeline scenarios and interpretation
+
+| Scenario | What it establishes | Important boundary |
+| --- | --- | --- |
+| normal WRITE → sync → READ | parser, RAM, worker offset, modeled durability, and readback agree | scripted transport and RAM filesystem |
+| immediate READ before worker | RAM is authoritative during the session | no real bus timing |
+| restart after modeled sync | durable model reloads confirmed bytes | simulated restart |
+| restart before sync | `f_write` buffer is not treated as durable by the model | model controls durability semantics |
+| same frame twice / slow storage | latest RAM version converges in the worker model | no real multicore scheduling |
+| partial batch/write/sync failure | rollback tables permit replay while RAM is retained | direct harness reconnect, not menu recovery |
+| removal during write | partial fake write is not confirmed and logical card is disabled | fake card/removal boundary |
+| write while physically absent | writes in the modeled pre-detection window remain in RAM | harness leaves logical presence true |
+| image swap/removal during swap | UNIT_TEST pause gating prevents a partial RAM image from being read | automatic pause acknowledgement |
+| reinsertion | direct worker remount/reinit can persist retained RAM | production menu reload path is not executed |
+
+The tests do not prove that pending RAM-only writes survive the actual `menu_task_run()` recovery flow. That flow reloads `CARD000.MCR` and resets version state.
+
+## Firmware build
+
+The firmware build compiles all application C sources and generates the PIO header for a Pico 2 W target. It establishes source/toolchain integration, including the production PIO assembly, but does not execute the binary.
+
+The current CMake configuration records:
+
+- Pico SDK 2.2.0,
+- board `pico2_w`,
+- C11 for project C code,
+- C++17 because the linked SD/FatFs library includes C++,
+- UART stdio enabled and USB stdio disabled,
+- output target name `main`.
+
+A successful build produces `main.uf2`, `main.elf`, `main.bin`, and other toolchain outputs in the selected build directory.
 
 ## CI
 
-GitHub Actions runs two independent workflows.
+### Firmware build workflow
 
-### Firmware build
-
-The build workflow:
+On pushes and pull requests to `main`, and on manual dispatch, GitHub Actions:
 
 - checks out submodules,
-- installs the ARM embedded toolchain,
-- fetches Pico SDK 2.2.0,
-- configures the project with CMake/Ninja,
-- builds the RP2350 firmware,
-- uploads `.uf2`, `.elf`, and `.bin` files as artifacts.
+- installs CMake, Ninja, and Ubuntu's ARM embedded packages,
+- clones Pico SDK 2.2.0,
+- configures `-S firmware -B build/firmware -G Ninja`,
+- builds and uploads UF2, ELF, and BIN artifacts.
 
-### Host tests
+The local VS Code configuration names ARM toolchain `14_2_Rel1`; the Linux CI workflow uses the version supplied by the Ubuntu package and should not be described as the same pinned toolchain.
 
-The test workflow:
+### Host-test workflow
 
-- installs the pinned Ruby/Ceedling environment,
-- runs the complete host suite with `ceedling test:all`.
+The second workflow uses Ruby 4.0 with the locked bundle and runs:
 
-Both workflows run for pushes and pull requests to `main`.
+```console
+bundle exec ceedling test:all
+```
 
-## What automated tests do not prove
+## Status matrix
 
-The existing suite gives strong coverage of logic and failure semantics, but it does **not** prove:
+| Property | Current evidence | Status |
+| --- | --- | --- |
+| C build and link for Pico 2 W | local/CI build configuration | covered by build |
+| READ/WRITE/STATUS logic | host unit and pipeline tests | covered in simulation |
+| frame version and modeled persistence logic | host unit and pipeline tests | covered in simulation |
+| menu state machine and storage orchestration | no automated test | not covered |
+| production PIO execution | only assembled/linked | not executed |
+| ACK/DATA waveform and timing margin | no committed capture | pending |
+| real PlayStation compatibility | no recorded console matrix | pending |
+| real microSD removal/power loss | simulated only | pending |
+| DFR0650 display behavior | breadboard photo but no repeatable test record | informal only |
+| custom PCB firmware build | no custom board target | pending |
+| custom PCB electrical bring-up | board unassembled | pending |
+| endurance and long-duration behavior | no record | pending |
 
-- electrical compatibility with a physical PlayStation,
-- production PIO timing margins,
-- ACK/DATA setup and hold timing,
-- behavior across different PS1 console revisions,
-- regulator behavior and board power integrity,
-- signal integrity on the custom PCB,
-- real microSD timing/pathological card behavior,
-- long-duration endurance.
+## Required physical validation
 
-These must be validated on target hardware.
+A future hardware report should record, at minimum:
 
-## Protocol timing
+- board/console revision and power source,
+- firmware commit and build configuration,
+- CMD/SCK/CS/DATA/ACK captures with measured setup, hold, ACK delay, and pulse width,
+- READ, WRITE, STATUS, abort, startup, and image-swap traces,
+- behavior under simultaneous SD writes, OLED refreshes, and UART logging,
+- multiple microSD cards and removal at controlled points,
+- power interruption during write/sync/close,
+- regulator rails, current, temperature, and source switching,
+- pass/fail criteria and raw artifacts.
 
-In progress...
-
-
+Until those artifacts exist, the production transport and custom hardware should be described as unvalidated.

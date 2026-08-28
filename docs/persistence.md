@@ -1,156 +1,160 @@
-# Persistence and failure recovery
+# Persistence, images, and recovery
 
-## Why persistence is asynchronous
+## Current persistence contract
 
-The PlayStation bus must not wait for microSD latency. A successful PS1 WRITE therefore updates the in-memory card image first; Core 1 persists changed frames in the background.
+A successful PS1 WRITE means that a validated 128-byte frame has been committed to `card_image`. It does not mean that the data has reached microSD.
 
-This creates two different definitions of “written”:
-
-- **RAM-visible** — the new frame is immediately returned by subsequent PS1 READ commands,
-- **storage-confirmed** — the frame version has survived `f_write()`, `f_sync()`, and `f_close()` successfully.
-
-The firmware tracks these states separately.
-
-## Frame version model
-
-Each of the 1024 frames has three logical version markers:
-
-| Marker | Owner | Meaning |
+| Milestone | What has happened | What it proves |
 | --- | --- | --- |
-| `frame_sequence` | Core 0 | newest RAM version; odd while a frame copy is in progress, even when stable |
-| `observed_sequence` | Core 1 | newest version already fetched by the persistence worker |
-| `confirmed_sequence` | Core 1 | newest version confirmed durable after sync/close |
+| PS1 result `0x47` | RAM frame and its even version were published | A following PS1 READ can see the new data |
+| successful `f_write()` | FatFs accepted 128 bytes at the frame offset | The version is still unconfirmed |
+| successful `f_sync()` | FatFs reported a synchronization success | The worker still waits for close |
+| successful `f_close()` after sync | The batch is closed and versions are marked confirmed | The firmware's conservative durability boundary was crossed |
 
-A new PS1 write changes only one 128-byte frame. This allows the worker to update the corresponding offset in the `.MCR` file instead of rewriting the full 128 KiB image.
+The last row is the firmware's accounting rule, not a guarantee against every controller, flash-media, or sudden-power-loss behavior.
 
-## Stable snapshot
-
-Core 1 copies a changed frame using a sequence-check pattern:
-
-```text
-read version -> copy 128 bytes -> read version again
-```
-
-The snapshot is accepted only when:
-
-- the version is even before the copy,
-- the version is unchanged after the copy,
-- the final version is still even.
-
-If Core 0 updates the same frame during the copy, Core 1 retries rather than persisting a torn mixture of old and new bytes.
-
-## Write path
+## Incremental write path
 
 ```mermaid
-stateDiagram-v2
-    [*] --> RAM_Updated: PS1 WRITE accepted
-    RAM_Updated --> Snapshot_Taken: worker fetches stable frame/version
-    Snapshot_Taken --> File_Written: f_lseek + f_write
-    File_Written --> Waiting_For_Sync: frame marked unsynced
-    Waiting_For_Sync --> Synced: f_sync succeeds
-    Synced --> Confirmed: f_close succeeds + version confirmed
-    Confirmed --> [*]
+flowchart TB
+    WRITE["PS1 WRITE accepted"]
+    RAM["RAM frame updated<br/>new even sequence"]
+    SNAP["Core 1 takes stable<br/>frame + version snapshot"]
+    OPEN["f_open active image<br/>FA_WRITE | FA_OPEN_EXISTING"]
+    IO["f_lseek(address × 128)<br/>f_write(exactly 128 bytes)"]
+    DIRTY["record unsynced frame/version"]
+    WAIT{"more changed frames?"}
+    IDLE["wait for 250 ms write idle<br/>or receive explicit flush"]
+    SYNC["f_sync"]
+    CLOSE["f_close"]
+    CONFIRM["confirm all versions in batch"]
 
-    Snapshot_Taken --> Recovery: open/seek/write error
-    File_Written --> Recovery: sync/close/card error
-    Recovery --> RAM_Updated: observed versions rolled back
+    WRITE --> RAM --> SNAP --> OPEN --> IO --> DIRTY --> WAIT
+    WAIT -- yes --> SNAP
+    WAIT -- no --> IDLE --> SYNC --> CLOSE --> CONFIRM
 ```
 
-### Incremental writes
+The file remains open while a batch is accumulating. A normal poll writes at most one frame; a flush drains all currently discoverable frames and then synchronizes immediately.
 
-For each changed frame, the worker seeks to:
+If the same frame changes again before confirmation, the unsynced entry is updated to the latest version written. If a still newer RAM version exists, it remains discoverable for another write.
 
-```text
-frame_address × 128 bytes
+## Worker error handling
+
+Open, seek, short-write/write, sync, close, and snapshot-fetch failures call the worker's recovery path. That path:
+
+1. records the error,
+2. marks the logical PS1 card absent,
+3. copies confirmed versions back into observed versions,
+4. clears the worker's unsynced table,
+5. closes the file if it was open,
+6. resets FatFs and SD-library state,
+7. shows an OLED SD error,
+8. busy-waits for 1 second before returning.
+
+Physical removal is handled similarly by `micro_sd_handle_card_unavailable()`, although that function resets the worker state directly.
+
+## Top-level recovery limitation
+
+The requeue in step 3 is useful only while the RAM image and version arrays are retained. The production menu does not currently complete recovery that way.
+
+```mermaid
+flowchart TB
+    ERR["worker error or detected removal"]
+    ABSENT["logical PS1 card absent"]
+    ROLLBACK["observed versions rolled back"]
+    MENU["menu storage state becomes not ready"]
+    RETRY["retry after 1 second<br/>or debounced reinsertion"]
+    DEFAULT["load or create<br/>0:/CARD000.MCR"]
+    REPLACE["overwrite card_image from file"]
+    RESET["reset frame, observed,<br/>and confirmed versions"]
+    READY["start absent window<br/>then expose card"]
+
+    ERR --> ABSENT --> ROLLBACK --> MENU --> RETRY --> DEFAULT --> REPLACE --> RESET --> READY
 ```
 
-and writes exactly one frame.
+Consequences of the current code:
 
-Several changed frames may be written before one shared sync. The worker waits for an idle period of 250 ms before synchronizing during normal polling. Operations that require a strong boundary, such as switching or deleting an image, call `micro_sd_save_worker_flush()` instead.
+- unconfirmed RAM-only writes can be lost after a detected SD error/removal because RAM is reloaded from the file;
+- if another image was active, recovery switches back to `CARD000.MCR`;
+- the selected-image choice is not persisted;
+- writes can be accepted in the short interval between physical removal and Core 1 marking the logical card absent, but those writes are also subject to the reload behavior;
+- after logical absence begins, Core 0 ignores further transactions.
 
-## Durability boundary
+The worker and pipeline tests that demonstrate retry after reconnection explicitly preserve RAM and reconnect the worker directly. They do not execute `menu_task_run()` or its `reload_inserted_card(initial_image_path)` path. Documentation and test names must not turn that harness behavior into a production-level guarantee.
 
-A successful `f_write()` is intentionally **not** treated as durable storage.
+## Image format
 
-The worker confirms frame versions only after:
+The project supports raw PlayStation card dumps with these properties:
 
-1. all pending frame writes succeed,
-2. `f_sync()` succeeds,
-3. `f_close()` succeeds.
+| Property | Requirement |
+| --- | --- |
+| File size | exactly 131,072 bytes |
+| Extension used by the UI | case-insensitive `.MCR` |
+| Header frame | bytes 0..1 are `MC` and byte 127 is XOR of bytes 0..126 |
+| Directory frames | frames 1..15 have an accepted state, zero reserved bytes 1..3, and a valid XOR |
+| Extra container/header formats | not supported |
 
-This conservative rule means a sync or close error leaves the affected versions unconfirmed and eligible for replay.
+Validation checks the header and directory area; it does not semantically validate all save-data frames.
 
-## Recovery after a storage failure
+A file whose complete 128 KiB contents are all `0x00` or all `0xFF` is treated as erased media. Loading it rewrites the file into the project's blank-card format, synchronizes/closes it, and replaces RAM with the same formatted image.
 
-On a storage error, the worker:
+The catalog scan initially filters by extension and exact size. Full header/directory validation happens only when an image is loaded, so a size-correct but malformed image may appear in the browser and then fail activation.
 
-1. records the storage error,
-2. marks the emulated card absent to the PlayStation,
-3. rolls `observed_sequence` back to `confirmed_sequence`,
-4. clears temporary unsynced bookkeeping,
-5. closes the save file if needed,
-6. resets the FatFs/card state,
-7. reports the SD error on the OLED,
-8. retries only after the storage lifecycle recovers.
+## Creation, catalog, and save metadata
 
-Rolling back the observed versions does **not** undo RAM data. Instead it makes every unconfirmed RAM version visible to the worker again, so it can be retried after recovery.
+- Startup loads or creates `0:/CARD000.MCR`.
+- New images use the first free name from `CARD000.MCR` through `CARD999.MCR`.
+- The on-device image list holds at most 64 entries and sorts the returned names lexicographically.
+- Stored image-name buffers hold at most 12 characters plus the terminator.
+- The save browser reads 15 directory entries and displays only first-block entries with state `0x51`.
+- Save information consists of the directory filename (non-printable bytes become `?`), slot, and a block count derived from the stored size. Game title, icon, region, and linked-block integrity are not decoded.
 
-This behavior is tested for open, seek, write, short-write, sync, close, no-space, read-only, and card-removal failures.
-
-## Immediate reads before persistence
-
-Because the RAM image is authoritative for the active emulation session, a PS1 READ immediately after a WRITE returns the new frame even if the SD worker has not run yet.
-
-This is an intentional trade-off: the device remains responsive, while persistence status is tracked independently.
-
-The integration suite contains a dedicated scenario for this behavior.
-
-## Image validation and blank-card creation
-
-`.MCR` images must be exactly 131,072 bytes.
-
-When loading an image, the firmware checks:
-
-- file size,
-- `MC` header signature,
-- directory entry states,
-- directory frame checksums.
-
-A file consisting entirely of `0x00` or `0xFF` is treated as erased media and formatted into a valid blank PS1 card image.
-
-New cards are generated as `CARD000.MCR` through `CARD999.MCR`, selecting the first unused name.
-
-## Safe image switching
-
-Switching from image A to image B is a cross-core operation and must never expose a partially loaded B image to the console.
-
-The implemented sequence is:
+## Image activation
 
 ```mermaid
 sequenceDiagram
-    participant UI as Core 1 / UI
-    participant C0 as Core 0 / PS1 bus
-    participant SD as Storage
+    participant UI as Core 1 / menu
+    participant C0 as Core 0 / bus
+    participant WORKER as save worker
+    participant FS as FatFs
     participant RAM as card_image
 
-    UI->>C0: request bus pause
-    C0-->>UI: pause acknowledged
-    UI->>SD: flush pending writes for image A
-    UI->>C0: mark card not present
-    UI->>SD: load and validate image B
-    SD->>RAM: replace complete 128 KiB image
-    UI->>UI: reset frame-version state
-    UI->>C0: start deliberate absent window
-    UI->>C0: mark card present
-    UI->>C0: release bus pause
+    UI->>C0: request pause
+    C0-->>UI: release bus and acknowledge
+    UI->>WORKER: flush active image A
+    WORKER->>FS: write pending frames, sync, close
+    UI->>C0: mark logical card absent
+    UI->>FS: stat, open, and read image B directly into RAM
+    UI->>UI: format erased image or validate header/directory
+    alt load succeeds
+        UI->>RAM: reset all frame-version state
+        UI->>UI: initialize worker for B
+        UI->>C0: arm 1.5 s / two-probe absent window
+        UI->>C0: mark logically present and release pause
+    else load fails
+        UI->>C0: release pause but keep card absent
+        Note over RAM: RAM may contain a partial or invalid B,<br/>but Core 0 cannot expose it
+    end
 ```
 
-After a successful switch, the bus intentionally ignores transactions for approximately 1.5 seconds and at least two probes before exposing the new card. This models a physical remove/reinsert event rather than changing card contents underneath an already-present card.
+The timer starts at the first probe after release. The implementation ignores at least two probes and accepts a later one only once 1.5 seconds has elapsed.
 
-If loading B fails, the console is not allowed to access a partially replaced RAM image.
+## Deletion
 
-## Deleting images
+Deleting a non-active image pauses Core 0, flushes the active image, deletes the selected file, and releases the pause.
 
-Deleting a non-active image first flushes pending storage work while the PS1 bus is paused.
+Deleting the active image first searches the visible catalog for another image. If none exists, it creates a new blank image. It then activates that fallback through the normal pause/load path before unlinking the old file.
 
-Deleting the active image first selects another existing image as a fallback. If no other image exists, a new blank image is created and activated before the old file is removed.
+A size-correct but format-invalid fallback can cause activation, and therefore deletion, to fail.
+
+## Power-loss and media guarantees
+
+The repository does not contain evidence for:
+
+- atomicity of an SD-sector update during sudden power loss,
+- behavior of a real card's volatile cache,
+- filesystem recovery after interrupted metadata updates,
+- long-duration wear or endurance,
+- preservation of unconfirmed RAM data through the current top-level recovery path.
+
+Accordingly, the implementation should be described as asynchronous and conservatively tracked, not power-loss-safe.

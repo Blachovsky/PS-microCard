@@ -1,134 +1,162 @@
 # PlayStation memory-card protocol
 
-## Scope
+## Implemented scope
 
-The firmware implements the PS1 memory-card command flow required for card identification/status, frame reads, and frame writes. The protocol layer is separated from the low-level serial transport so most behavior can be tested on the host.
+The firmware accepts memory-card access byte `0x81` and implements three command values:
 
-## Card geometry
-
-The emulated card contains 1024 frames of 128 bytes each:
-
-```text
-1024 frames × 128 bytes = 131072 bytes = 128 KiB
-```
-
-Frame addresses therefore range from `0` to `1023`.
-
-The shared geometry is defined in [`ps1_card_geometry.h`](../firmware/ps1/ps1_card_geometry.h).
-
-## Implemented commands
-
-After a valid memory-card access byte (`0x81`), the command byte selects the operation.
-
-| Command | Meaning | Firmware handler |
+| Command | Operation | Handler in `ps1_card_bus.c` |
 | --- | --- | --- |
-| `0x52` | READ | `ps1emu_handle_read()` |
-| `0x57` | WRITE | `ps1emu_handle_write()` |
-| `0x53` | STATUS / identification | `ps1emu_handle_status()` |
+| `0x52` | READ one frame | `ps1emu_handle_read()` |
+| `0x57` | WRITE one frame | `ps1emu_handle_write()` |
+| `0x53` | fixed STATUS/identification response | `ps1emu_handle_status()` |
 
-Unknown commands are ignored and the bus lines are released safely.
+Other access bytes are rejected without entering a command. Unknown commands after `0x81` receive no command-specific payload and the lines are released.
+
+Core 0 calls the transaction handler only when the logical card-present/swap gate permits it. Host unit tests often call the handler directly, so physical/logical presence is a separate behavior from command parsing.
+
+## Geometry and byte order
+
+| Property | Value |
+| --- | ---: |
+| Frames | 1024 |
+| Bytes per frame | 128 |
+| Total | 131,072 bytes |
+| Valid frame addresses | 0..1023 |
+| Address order on the bus | most-significant byte, then least-significant byte |
+| Checksum | XOR of both address bytes and all 128 data bytes |
+
+Geometry constants are shared in [`ps1_card_geometry.h`](../firmware/ps1/ps1_card_geometry.h).
+
+## Common transaction prefix
+
+The implementation is pipelined: a queued card response is associated with the next byte clocked by the console.
+
+| Byte | Console sends | Card queues/returns | Notes |
+| ---: | --- | --- | --- |
+| 0 | `0x81` | `0xFF` / released DATA | initial receive call does not queue an ACK |
+| 1 | command | current protocol status | response is queued before the ACK for the access byte |
+| 2 onward | command-specific bytes | command-specific response | every parser exchange requests the pipelined ACK/response path |
+
+The first valid access byte is therefore acknowledged only when Core 0 has already queued the status byte for byte 1. The wording “no ACK on the first call” does not mean that a valid access byte is never acknowledged.
+
+## Protocol status byte
+
+The status byte returned during the command transfer is separate from the fixed `0x53` payload.
+
+| Bit | Value | Current behavior |
+| --- | --- | --- |
+| power-on | `0x08` | set at initialization, logical removal, and swap start; cleared by a successful WRITE |
+| write error | `0x04` | set by invalid address, bad checksum, or commit failure; reported on the next command transfer and then cleared |
+
+Logical removal resets the status byte to power-on. A successful WRITE clears both bits.
 
 ## READ (`0x52`)
 
-The console supplies a two-byte frame address. For a valid address, the firmware returns:
+After the common prefix, the handler:
 
-1. protocol response bytes,
-2. echoed frame address,
-3. 128 bytes from the active RAM image,
-4. XOR checksum,
-5. success result `0x47`.
+1. queues `5A 5D`,
+2. receives address MSB and LSB while returning zero bytes,
+3. queues `5C 5D`,
+4. echoes address MSB and LSB,
+5. sends 128 data bytes,
+6. sends the XOR checksum,
+7. sends result `0x47`.
 
-For an out-of-range frame, the firmware returns `0xFF` data and the bad-sector result `0xFF` rather than reading outside the card buffer.
+```text
+card response after address reception:
+5C 5D  addr_msb addr_lsb  data[128]  xor  47
+```
 
-The checksum is calculated as XOR of:
-
-- address low byte,
-- address high byte,
-- all 128 frame bytes.
+For an address outside 0..1023, the firmware sends 128 bytes of `0xFF`, checksum byte `0xFF`, and result `0xFF`. It does not dereference outside `card_image`.
 
 ## WRITE (`0x57`)
 
-The firmware receives:
+After `5A 5D`, the handler receives:
 
-- a two-byte frame address,
+- address MSB and LSB,
 - exactly 128 data bytes,
-- a checksum byte.
+- one checksum byte.
 
-The RAM image is changed only if both conditions are true:
+It commits RAM only after the full payload has arrived and both address and checksum are valid. Abort or timeout before the checksum cannot create a partial RAM frame.
 
-1. the frame address is valid,
-2. the received checksum matches the calculated checksum.
+The trailing response is:
 
-A failed checksum or invalid frame therefore cannot create a partial RAM update.
+| Condition | Result |
+| --- | ---: |
+| valid address, checksum, and RAM commit | `0x47` |
+| checksum mismatch or internal commit error | `0x43` |
+| address outside 0..1023 | `0xFF` |
 
-On success, `ps1emu_commit_frame()` atomically publishes a complete new frame version to the storage worker. Persistence to microSD happens later on Core 1.
+The result follows `5C 5D`. A successful RAM commit publishes a new frame version for Core 1; it does not wait for microSD.
 
 ## STATUS (`0x53`)
 
-The status handler returns the fixed identification/status response currently implemented by the emulator:
+The command-specific response is the fixed eight-byte sequence currently present in code:
 
 ```text
 5A 5D 5C 5D 04 00 00 80
 ```
 
-The protocol state also tracks power-on and write-error status bits. A successful write clears the power-on/write-error state used by the command exchange.
+This payload is not generated from the mutable power-on/write-error byte.
 
-## PIO transport
-
-Production firmware uses two PIO state machines in `pio0`:
+## Production PIO transport
 
 ```mermaid
 flowchart LR
-    CMD[CMD + CS + SCK] --> RX[PIO RX state machine]
-    RX --> CPU[Core 0 protocol code]
-    CPU --> TXFIFO[TX FIFO]
-    TXFIFO --> TX[PIO TX state machine]
-    TX --> DATA[DATA]
-    TX --> ACK[ACK]
+    CMD["CMD, CS, SCK"] --> RX["PIO0 RX state machine<br/>LSB-first sampling"]
+    RX --> FIFO_RX["RX FIFO"]
+    FIFO_RX --> CPU["Core 0 protocol"]
+    CPU --> FIFO_TX["TX FIFO<br/>inverted response byte"]
+    FIFO_TX --> TX["PIO0 TX state machine"]
+    TX --> DATA["DATA<br/>open-drain"]
+    TX --> ACK["ACK<br/>open-drain"]
 ```
+
+Both DATA and ACK keep a low output latch. PIO asserts a line by changing its direction to output and releases it by changing direction to input; it does not actively drive a high level.
 
 ### RX state machine
 
 The RX program:
 
-- waits for active-low `CS`,
-- samples one CMD bit per SCK cycle,
-- shifts LSB-first bytes into the RX FIFO.
+- waits for active-low `CS` when armed,
+- waits for SCK low and then high,
+- samples one CMD bit on that rising transition,
+- auto-pushes after eight LSB-first bits.
 
 ### TX state machine
 
 The TX program:
 
-- receives an already prepared response byte from Core 0,
-- generates the ACK pulse,
-- shifts the response on DATA LSB-first,
-- implements DATA and ACK as open-drain outputs by switching pin direction rather than driving a logic high.
+- waits for active-low `CS`,
+- blocks until Core 0 has placed an inverted byte in the TX FIFO,
+- asserts ACK before shifting that prepared response,
+- releases ACK,
+- changes DATA direction on SCK falling transitions for eight LSB-first bits.
 
-The C code writes an inverted byte to the PIO TX FIFO because a `1` in the PIO output stream means “drive DATA low”, while `0` releases the line.
+The state machines run from a 2.5 MHz PIO clock. The programmed ACK-low instruction lasts nominally 6 PIO cycles, about 2.4 µs. This is a code-derived value, not a measured bus waveform or established compatibility margin.
 
-The two-state-machine design keeps command reception independent of the CPU generating the previous response/ACK sequence.
+The constants `PS1_ACK_PULSE_US` and `PS1_BUS_CLOCK_TIMEOUT_LOOPS` apply to the UNIT_TEST reference bit-bang transport, not the production PIO program.
 
-## Pipelined byte exchange
+## Abort, timeout, and reset
 
-The first access byte is received without generating an ACK. For subsequent bytes, the next response is queued before the ACK associated with the preceding received byte.
+The production CPU waits at most 500 µs for each received byte to appear in the RX FIFO. While waiting, it also checks whether `CS` has risen.
 
-This ordering means that once the console sees ACK, the data for the following byte is already prepared.
+On abort or timeout:
 
-Host tests explicitly verify this transport contract for the reference `UNIT_TEST` implementation. The production PIO programs are compiled as part of the firmware build but still require measurement on physical hardware.
+- the command handler stops,
+- DATA and ACK are released,
+- both PIO state machines are disabled and their FIFOs cleared,
+- the main loop waits at most 5 ms for `CS` release,
+- PIO is initialized for the next transaction once `CS` is high.
 
-## Abort and timeout behavior
+The 500 µs byte deadline and 5 ms release deadline are defensive firmware values. They are not documented PS1 timing requirements.
 
-A transaction is abandoned if:
+## What host tests establish
 
-- `CS` is released before the transaction completes, or
-- a required clock edge does not arrive before the byte timeout.
+Host tests establish command parsing, result values, checksum behavior, frame bounds, byte-boundary abort handling, and the requested pipelined response/ACK ordering.
 
-After each transaction, both PIO state machines are reset and prepared for the next `CS` assertion.
-
-The production byte timeout is currently `500 µs`. This is a defensive timeout value in firmware, **not a measured PS1 timing specification**.
+The `hardware_xfer_*` tests execute a C bit-bang reference compiled only under `UNIT_TEST`. They do not execute `ps1_card_bus.pio`, PIO FIFOs, state-machine synchronization, IRQ masking, or actual GPIO electrical behavior.
 
 ## Timing validation status
 
-The protocol behavior is covered by host tests, including aborts at byte/bit boundaries and timeout behavior. Electrical timing of the production PIO implementation has been documented with a logic analyzer.
-
-See [verification.md](verification.md) for the validation evidence.
+The production PIO source compiles as part of the firmware build. The repository contains no logic-analyzer capture or recorded physical PlayStation timing evidence. Electrical compatibility and timing margins remain pending; see [verification.md](verification.md).

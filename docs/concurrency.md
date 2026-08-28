@@ -1,124 +1,145 @@
 # Concurrency and synchronization
 
-## Core split
+## Core ownership
 
-The RP2350 cores have deliberately different responsibilities:
-
-| Core | Primary responsibilities |
+| State or operation | Normal owner |
 | --- | --- |
-| Core 0 | PS1 bus, protocol parsing, RAM card reads/writes |
-| Core 1 | FatFs, microSD persistence, image management, OLED, buttons |
+| PS1 transaction and frame commit | Core 0 |
+| Stable frame snapshot and persistence bookkeeping | Core 1 |
+| FatFs, image management, menu, OLED, buttons | Core 1 |
+| Complete `card_image` replacement | Core 1, only while Core 0 has acknowledged a pause |
+| Version-state initialization | Core 1 at startup/image activation, while the card is not exposed |
 
-The goal is not simply parallelism. The split keeps unpredictable filesystem/UI execution out of the latency-sensitive console path.
+There is no scheduler or RTOS. Core 0 spins in the PS1 service loop; Core 1 runs the menu/storage loop with a 10 ms busy wait between iterations.
 
-## Shared card image
+## Shared RAM image
 
-`card_image` is a 128 KiB array shared between both cores.
+`card_image` is a 128 KiB array shared by both cores.
 
-The access pattern is asymmetric:
+- Core 0 reads frames for PS1 READ and commits ordinary PS1 WRITE data.
+- Core 1 copies stable changed-frame snapshots for persistence.
+- Core 1 may overwrite the entire array while loading an image, but only during the pause handshake and while the logical card is absent.
 
-- Core 0 reads frames for PS1 READ commands and is the only core that commits normal PS1 frame writes.
-- Core 1 reads stable snapshots of changed frames for persistence.
-- Core 1 replaces the complete image only during an explicit image switch while Core 0 is paused and the card is marked absent.
+Normal frame access does not use a global mutex.
 
-This ownership model avoids a global mutex on every PS1 transaction.
+## Per-frame sequence protocol
 
-## Per-frame sequence numbers
-
-Each frame has a 32-bit sequence number written by Core 0.
-
-For a commit:
+Each of the 1024 frames has a 32-bit `frame_sequence`. A Core 0 commit advances it twice:
 
 ```text
-even N
-  -> store N+1 (odd: update in progress)
-  -> copy 128 bytes
-  -> store N+2 (even: stable)
+stable even N
+    -> N + 1 (odd: copy in progress)
+    -> copy 128 bytes
+    -> N + 2 (even: stable)
 ```
 
-Core 1 snapshots only an even, unchanged sequence. The algorithm is conceptually similar to a small per-frame seqlock with a single writer.
+The increment intentionally wraps modulo 2³². The implementation is tested across `UINT32_MAX` to zero.
 
 ```mermaid
 sequenceDiagram
     participant C0 as Core 0
-    participant V as frame_sequence[n]
-    participant RAM as frame n
+    participant SEQ as frame_sequence[n]
+    participant RAM as card_image frame n
     participant C1 as Core 1
 
-    C0->>V: odd version
+    C0->>SEQ: atomic store odd (seq_cst)
     C0->>RAM: copy 128 bytes
-    C0->>V: even version
-    C0-->>C1: SEV
-    C1->>V: read before
-    C1->>RAM: copy snapshot
-    C1->>V: read after
-    C1->>C1: accept only if before == after and even
+    C0->>SEQ: atomic store even (seq_cst)
+    C0->>C0: __sev()
+
+    loop at most 4 snapshot attempts
+        C1->>SEQ: atomic load before (acquire)
+        alt version is even
+            C1->>RAM: memcpy 128 bytes
+            C1->>SEQ: atomic load after (acquire)
+            C1->>C1: accept only if equal and even
+        end
+    end
 ```
 
-## Why no mutex in the hot path
+If four attempts cannot obtain a stable copy, that candidate is skipped for the current scan. `ps1emu_take_changed_frame()` continues scanning other frames and a later worker poll can try again.
 
-Using a cross-core mutex for every frame read/write could make bus latency depend on storage-side scheduling.
+## Discovery and polling
 
-Instead:
+`ps1emu_take_changed_frame()` scans from a rotating cursor and returns at most one changed frame per call. `micro_sd_save_worker_poll()` calls it once, so normal operation writes at most one frame per approximately 10 ms menu iteration. `micro_sd_save_worker_flush()` loops until no changed frame remains.
 
-- Core 0 never waits for Core 1 when committing an ordinary frame,
-- Core 1 tolerates a conflicting write by retrying the snapshot,
-- changed frames are discovered by scanning version numbers,
-- `__sev()` wakes Core 1 when a new frame is published.
+`ps1emu_commit_frame()` calls `__sev()`, but the current Core 1 code contains no `__wfe()`. The event instruction therefore does not currently provide the wake-up mechanism described by older comments; polling does.
 
-The result is a non-blocking producer path for normal PS1 writes.
+## Observed and confirmed versions
 
-## Observed vs confirmed versions
+Core 1 maintains:
 
-Core 1 tracks two additional arrays:
+- `observed_sequence[n]` — the stable version most recently taken by the worker,
+- `confirmed_sequence[n]` — the version accepted only after a successful `f_sync()` and `f_close()` batch.
 
-- `observed_sequence` — versions already fetched for attempted persistence,
-- `confirmed_sequence` — versions known to have passed the storage durability boundary.
-
-After a storage failure:
+`ps1emu_rollback_unconfirmed_frames()` performs:
 
 ```text
 observed_sequence = confirmed_sequence
+scan_cursor = 0
 ```
 
-This makes all newer RAM versions pending again without requiring Core 0 to replay the original console transactions.
+This makes newer RAM versions discoverable again only if the RAM image and version arrays remain intact.
+
+The worker-level retry tests preserve RAM and explicitly reinitialize the worker. The production menu's recovery path instead reloads `0:/CARD000.MCR` into RAM and calls `ps1emu_storage_state_init()`. That top-level behavior discards the requeued version state; it is documented as a current limitation rather than a persistence guarantee.
 
 ## Image-switch pause handshake
 
-Replacing all 128 KiB of `card_image` cannot use the ordinary per-frame snapshot model because Core 1 is intentionally changing the whole active image.
+```mermaid
+sequenceDiagram
+    participant C1 as Core 1 / image operation
+    participant FLAG as atomic pause flags
+    participant C0 as Core 0 / bus loop
+    participant PIO as PIO0 state machines
 
-Core 1 therefore requests a bus pause:
+    C1->>FLAG: pause_requested = true
+    loop until acknowledged
+        C1->>C1: busy_wait_us_32(50)
+    end
+    C0->>PIO: release DATA/ACK and disable/clear state machines
+    C0->>FLAG: pause_active = true
+    C0->>C0: spin while pause_requested
+    FLAG-->>C1: pause_active observed
 
-1. set `ps1_pause_requested`,
-2. Core 0 completes/release its current transaction state and sets `ps1_pause_active`,
-3. Core 1 flushes and replaces the active image,
-4. Core 1 releases the pause,
-5. Core 0 re-arms the PIO transaction state.
+    Note over C1: flush and whole-image operation
 
-The pause handshake is used only for operations requiring a global card-image boundary, not for normal frame persistence.
+    C1->>FLAG: pause_requested = false
+    C0->>PIO: wait up to 5 ms for CS high, then re-arm
+    C0->>FLAG: pause_active = false
+    loop until released
+        C1->>C1: busy_wait_us_32(50)
+    end
+```
 
-## Flash/XIP interaction
+A request made during a transaction is acknowledged only after Core 0 leaves that transaction path. This handshake has no timeout on the Core 1 side; a failed or stopped Core 0 would block the requester.
 
-RP2350 firmware executes most code from external flash through XIP. Filesystem work on Core 1 can therefore interact with flash availability/latency.
+The handshake is used for image activation and deletion. It is not used for normal background frame persistence.
 
-To protect the critical bus path, the Core 0 service loop and relevant PS1 hot-path functions are placed in SRAM using `__not_in_flash_func`.
+## Logical card presence and swap gating
 
-This is a design choice worth validating under worst-case storage/UI load once the target hardware is available.
+`ps1_card_present` is a software gate checked by Core 0 before dispatching a transaction.
 
-## Interrupt handling
+- `false` causes transactions to be ignored and resets the protocol status to power-on.
+- A successful startup or image activation sets it to `true` but also starts a swap-absent policy.
+- The 1.5-second absent timer begins on the first ignored probe, not at the moment Core 1 requests the window.
+- At least two probes are ignored; the third or a later probe is accepted only after the time condition has also elapsed.
 
-Core 0 disables interrupts for the duration of one active PS1 transaction. The intent is to prevent timer or USB-related handlers from interrupting byte timing.
+Logical absence is not the same as physically disconnecting the bus. DATA and ACK are released and the transaction handler is skipped.
 
-Interrupts are restored immediately after the transaction has ended and the bus has been prepared for the next one.
+## Interrupts and XIP
 
-## Concurrency invariants
+Core 0 saves and disables interrupts from the detected `CS` falling edge until the transaction has ended, lines have been released, and PIO has been prepared for the next transaction. Interrupts are then restored.
 
-The implementation is designed around the following invariants:
+The service loop and protocol hot path are copied to SRAM with `__not_in_flash_func`. This reduces dependence on external-flash instruction fetch while Core 1 is running FatFs, but no repository evidence establishes worst-case timing under real storage, OLED, UART, or flash load.
 
-1. Core 0 is the only normal producer of PS1 frame changes.
-2. Core 1 never persists a snapshot that changed while it was being copied.
-3. A frame is not considered durable until Core 1 confirms its exact version.
-4. A storage failure requeues every version newer than the last confirmed one.
-5. The console cannot access the RAM buffer while Core 1 is replacing the complete active image.
+## Properties covered by host tests
 
-These invariants are exercised by both unit tests and end-to-end pipeline tests.
+Host tests cover:
+
+- stable snapshots and version wraparound,
+- latest-version selection and rollback/confirmation bookkeeping,
+- storage batching and replay when the test harness preserves RAM,
+- pause-gated image replacement through a UNIT_TEST auto-acknowledged pause,
+- logical absent delay/probe behavior.
+
+They do not execute real dual-core interleavings, the production PIO state machines, interrupt masking, or XIP contention.

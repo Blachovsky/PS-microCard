@@ -1,92 +1,149 @@
 # Architecture
 
-## Overview
+## Supported runtime
 
-PS-microCard separates latency-sensitive PlayStation communication from slower storage and user-interface work. The current firmware target is an RP2350-based Raspberry Pi Pico 2 W, using both processor cores and RP2350 PIO.
+The runtime described here is the firmware that currently builds for the Raspberry Pi Pico 2 W (`PICO_BOARD=pico2_w`). The custom RP2350 PCB is a separate, unassembled hardware design and is not yet a compatible firmware target; see [hardware.md](hardware.md).
+
+## Runtime overview
 
 ```mermaid
 flowchart LR
-    PS1[PlayStation 1] --> BUS[PS1 bus transport<br/>PIO + Core 0]
-    BUS <--> EMU[Memory-card protocol<br/>Core 0]
-    EMU <--> RAM[128 KiB card image in RAM]
+    PS1[PlayStation 1]
+    SD[(microSD<br/>raw 128 KiB MCR files)]
+    BTN[Two active-low buttons]
+    OLED[DFR0650<br/>SSD1306 OLED]
 
-    RAM <--> WORKER[Persistence worker<br/>Core 1]
-    WORKER <--> FATFS[FatFs]
-    FATFS <--> SD[microSD<br/>.MCR images]
+    subgraph MCU["RP2350 on Pico 2 W"]
+        direction TB
 
-    BTN[Two buttons] --> MENU[OLED menu<br/>Core 1]
-    MENU --> WORKER
-    MENU --> IMAGES[Image management]
-    IMAGES <--> FATFS
+        subgraph CORE0["Core 0 — latency-sensitive path"]
+            direction LR
+            PIO["PIO0<br/>RX SM + TX SM"]
+            BUS[ps1_card_bus]
+            EMU[ps1_card_emulator]
+            PIO <--> BUS
+            BUS <--> EMU
+        end
+
+        RAM["card_image<br/>128 KiB RAM"]
+        VERSIONS["1024 frame versions"]
+
+        subgraph CORE1["Core 1 — storage and UI"]
+            direction LR
+            MENU["menu task<br/>10 ms loop"]
+            WORKER[micro_sd_worker]
+            IMAGES[micro_sd_image]
+            FATFS[FatFs]
+            MENU --> WORKER
+            MENU --> IMAGES
+            WORKER --> FATFS
+            IMAGES --> FATFS
+        end
+
+        EMU <--> RAM
+        EMU --> VERSIONS
+        RAM --> WORKER
+        VERSIONS --> WORKER
+        IMAGES -. "whole-image replace<br/>while Core 0 is paused" .-> RAM
+    end
+
+    PS1 <--> PIO
+    FATFS <--> SD
+    BTN --> MENU
+    MENU --> OLED
 ```
 
-## Core responsibilities
+Normal PS1 reads and writes never call FatFs. Image activation is the exception to the usual ownership pattern: Core 1 replaces the complete RAM image only after a pause handshake has stopped Core 0 from exposing it.
 
-### Core 0 — PlayStation interface
+## Core 0: PS1 interface
 
-Core 0 owns the real-time path:
+Core 0:
 
-- detects memory-card transactions through `CS`,
-- executes the PS1 memory-card protocol,
-- uses two PIO state machines for serial receive/transmit,
-- reads and writes the in-memory card image,
-- publishes changed 128-byte frames for Core 1,
-- temporarily pauses only when Core 1 must replace the complete active image.
+- detects the falling edge of active-low `CS`,
+- disables its interrupts for one active transaction,
+- dispatches READ, WRITE, and STATUS commands,
+- exchanges bytes through two PIO0 state machines,
+- reads or commits one 128-byte RAM frame,
+- releases DATA and ACK, waits up to 5 ms for `CS` to rise, and re-arms PIO,
+- services pause requests between transactions.
 
-The infinite bus service loop is marked `__not_in_flash_func`, as are the hot-path functions it calls. This keeps the transaction path in SRAM so Core 1 can execute FatFs code from external flash without stalling Core 0 instruction fetch.
+The infinite service loop and called protocol hot-path functions use `__not_in_flash_func`. This places them in SRAM so Core 0 does not need to fetch those instructions through XIP while Core 1 executes filesystem and UI code from flash.
 
-During one active PS1 transaction, interrupts are disabled on Core 0 so unrelated USB/timer interrupts cannot insert latency into the byte exchange.
+The code does not establish a measured worst-case latency guarantee. Physical timing remains an outstanding validation item.
 
-Relevant code:
+Relevant sources:
 
 - [`firmware/main.c`](../firmware/main.c)
 - [`firmware/ps1/ps1_card_bus.c`](../firmware/ps1/ps1_card_bus.c)
 - [`firmware/ps1/ps1_card_bus.pio`](../firmware/ps1/ps1_card_bus.pio)
 - [`firmware/ps1/ps1_card_emulator.c`](../firmware/ps1/ps1_card_emulator.c)
 
-### Core 1 — storage and UI
+## Core 1: storage and UI
 
-Core 1 handles operations that can tolerate higher and less predictable latency:
+Core 1 runs `menu_task_run()` on an explicitly allocated 8 KiB stack. Its loop executes approximately every 10 ms and handles:
 
-- microSD card lifecycle,
-- FatFs operations,
-- incremental persistence of changed frames,
-- creation/listing/deletion of `.MCR` images,
-- parsing save-directory metadata,
-- OLED rendering,
-- button input and menu control.
+- microSD presence, debounce, retry, and health probing,
+- one normal persistence-worker step per loop,
+- explicit full flushes before selected image operations,
+- image creation, listing, activation, deletion, and save-directory reads,
+- button debounce and menu state,
+- OLED updates and its 30-second idle timeout.
 
-Core 1 uses an explicitly enlarged 8 KiB stack because FatFs requires more stack than the default Core 1 allocation used by the Pico SDK.
+A normal worker poll fetches at most one changed frame. Once there are no more immediately available frames, it waits for 250 ms of write inactivity before `f_sync()` and `f_close()`.
 
-Relevant code:
+Core 1 does not currently sleep in `__wfe()`. Core 0 emits `__sev()` after a frame commit, but the present menu loop discovers work by polling.
 
-- [`firmware/micro_sd/`](../firmware/micro_sd/)
+Relevant sources:
+
 - [`firmware/menu/`](../firmware/menu/)
+- [`firmware/micro_sd/`](../firmware/micro_sd/)
 - [`firmware/drivers/oled.c`](../firmware/drivers/oled.c)
 
-## Card image model
+## Startup sequence
 
-A standard PS1 memory card is represented as:
+```mermaid
+sequenceDiagram
+    participant MAIN as Core 0 / main
+    participant BUS as PS1 bus state
+    participant MENU as Core 1 / menu
+    participant FS as FatFs + microSD
+    participant RAM as card_image
 
-| Property | Value |
+    MAIN->>BUS: initialize PIO and mark card absent
+    MAIN->>MENU: launch with 8 KiB stack
+    MENU->>MENU: initialize buttons, storage state, and OLED
+    alt microSD is present
+        MENU->>FS: mount and stat 0:/CARD000.MCR
+        opt image does not exist
+            MENU->>FS: create and sync a blank 128 KiB image
+        end
+        MENU->>FS: read image directly into RAM
+        MENU->>MENU: validate or format erased image
+        MENU->>RAM: reset all frame-version state
+        MENU->>BUS: start swap-style absent window, mark logically present
+        Note over BUS: timer starts on first PS1 probe;<br/>at least two probes are ignored
+    else no usable microSD
+        MENU->>BUS: keep card absent
+    end
+```
+
+The initial image path is hard-coded in `main.c`. The previously selected image is not restored after a restart.
+
+## Card-image model
+
+| Property | Current value |
 | --- | ---: |
 | Frame size | 128 bytes |
 | Frame count | 1024 |
-| Total image size | 131,072 bytes (128 KiB) |
-| Storage format used by the project | `.MCR` |
+| RAM image size | 131,072 bytes (128 KiB) |
+| Supported file representation | raw 128 KiB image with a `.MCR` extension |
+| Initial path | `0:/CARD000.MCR` |
 
-The full active card image lives in the global `card_image` RAM buffer. This is deliberate: reads and writes from the PlayStation do not require an SD-card transaction.
+The RAM buffer is authoritative for the current emulation session. A successful console WRITE is immediately visible to a subsequent READ, but it is not yet durable on microSD.
 
-A successful console write therefore has two separate milestones:
+## Read and write paths
 
-1. **visible in RAM** — immediately available to subsequent PS1 reads,
-2. **durable on microSD** — confirmed only after the storage worker has written, synchronized, and closed the file successfully.
-
-The distinction is central to the persistence design described in [persistence.md](persistence.md).
-
-## Main data flows
-
-### Console read
+### Console READ
 
 ```mermaid
 sequenceDiagram
@@ -94,65 +151,59 @@ sequenceDiagram
     participant BUS as Core 0 / protocol
     participant RAM as card_image
 
-    PS1->>BUS: READ command + frame address
-    BUS->>RAM: locate 128-byte frame
-    RAM-->>BUS: frame data
-    BUS-->>PS1: frame + checksum + result
+    PS1->>BUS: READ + frame address
+    BUS->>RAM: resolve 128-byte frame
+    RAM-->>BUS: frame bytes
+    BUS-->>PS1: echoed address + data + XOR + result
 ```
 
-No filesystem access is required in this path.
+No filesystem operation occurs in this path.
 
-### Console write
+### Console WRITE
 
 ```mermaid
 sequenceDiagram
     participant PS1 as PlayStation
-    participant C0 as Core 0
+    participant C0 as Core 0 / protocol
     participant RAM as card_image
-    participant C1 as Core 1 worker
-    participant SD as microSD
+    participant C1 as Core 1 / worker
+    participant FS as FatFs / microSD
 
-    PS1->>C0: WRITE command + frame + checksum
+    PS1->>C0: WRITE + address + 128 bytes + XOR
     C0->>C0: validate address and checksum
-    C0->>RAM: commit 128-byte frame
-    C0-->>PS1: success result
-    C0-->>C1: publish new frame version
-    C1->>SD: f_write(frame)
-    C1->>SD: f_sync()
-    C1->>SD: f_close()
-    C1->>C1: confirm persisted version
+    C0->>RAM: publish odd version, copy frame, publish even version
+    C0-->>PS1: success result 0x47
+    loop one changed frame per normal poll
+        C1->>RAM: copy stable frame/version snapshot
+        C1->>FS: f_lseek + f_write
+    end
+    Note over C1,FS: after 250 ms idle, or during an explicit flush
+    C1->>FS: f_sync
+    C1->>FS: f_close
+    C1->>C1: confirm recorded versions
 ```
 
-This lets the console observe the new value immediately without waiting for SD latency.
+The success byte returned to the console precedes storage persistence. Current top-level recovery does not guarantee that an unconfirmed RAM-only version survives an SD error; see [persistence.md](persistence.md).
 
 ## Module boundaries
 
 | Module | Responsibility |
 | --- | --- |
-| `ps1_card_bus` | PS1 transaction framing, PIO transport, command dispatch, card-present state |
-| `ps1_card_emulator` | RAM image access, checksum, changed-frame publication and version tracking |
-| `micro_sd_worker` | Incremental frame writes, batching, sync/close, storage recovery |
-| `micro_sd_image` | `.MCR` creation/validation, image catalog, save metadata, activation/deletion |
-| `menu` | Core 1 task loop and user interaction |
-| `oled` | Display driver and status screens |
-| `hardware_config` | GPIO and peripheral configuration |
+| `main` | startup, Core 1 stack/launch, and the Core 0 bus-service loop |
+| `ps1_card_bus` | transaction framing, PIO transport, commands, status flags, logical presence, and pause/swap gating |
+| `ps1_card_emulator` | RAM access, protocol checksum, frame publication, snapshot, confirmation, and rollback markers |
+| `micro_sd` | card detect, mount state, active path/name, result state, and FatFs reset |
+| `micro_sd_worker` | incremental frame writes, idle batching, sync/close, and worker-local recovery |
+| `micro_sd_image` | raw-image validation/formatting, catalog, save metadata, activation, and deletion |
+| `menu_*` | Core 1 orchestration, storage lifecycle, controls, screen state, and display power policy |
+| `oled` | SSD1306-style framebuffer and SPI transfers for the current DFR0650 development module |
+| `hardware_config` | current Pico 2 W pin and peripheral configuration |
+| `app_log` | mutex-protected UART log formatting |
 
-## Design trade-offs
+## Design consequences
 
-### Full image in RAM
-
-**Benefit:** deterministic PS1 read/write access independent of SD-card latency.
-
-**Cost:** 128 KiB of SRAM is permanently reserved for the active card image.
-
-### Background persistence
-
-**Benefit:** console writes do not block on FatFs.
-
-**Cost:** a short interval exists in which data is visible to the console but not yet durable on storage. The firmware tracks this state explicitly and retries unconfirmed frames after recoverable errors.
-
-### Core split instead of a single event loop
-
-**Benefit:** filesystem and OLED work cannot directly occupy the processor servicing PS1 transactions.
-
-**Cost:** image state and card lifecycle require explicit cross-core synchronization.
+- The 128 KiB image, three 1024-entry `uint32_t` version arrays, and worker bookkeeping consume a material amount of RP2350 SRAM.
+- Normal console writes never wait for Core 1.
+- Storage can lag RAM, and a reported PS1 WRITE success is not a power-loss guarantee.
+- Whole-image changes require a global pause rather than the per-frame snapshot scheme.
+- The Core 0/Core 1 split reduces direct interference, but target timing and XIP behavior still require physical measurement.

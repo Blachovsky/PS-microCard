@@ -9,7 +9,7 @@ PS-microCard is an embedded hardware and firmware project that replaces a standa
 
 The project combines real-time console communication, RP2350 PIO, dual-core firmware, persistent storage, a small on-device UI, automated host-side testing, and custom electronics design.
 
-> **Project status:** the firmware and custom PCB are under active development. The custom PCB has been designed but has not yet been assembled. Firmware builds currently target the RP2350-based Raspberry Pi Pico 2 W development platform.
+> **Project status:** the current firmware builds for and is configured for a Raspberry Pi Pico 2 W development setup. The custom RP2350 PCB has been designed but not assembled or electrically validated, and its GPIO map, card-detect polarity, and OLED controller are not compatible with the current binary.
 
 <p align="center"> 
 <img src="images/PCB_render.png" alt="PS-microCard PCB render" width="480"> 
@@ -24,10 +24,10 @@ The project combines real-time console communication, RP2350 PIO, dual-core firm
 ## What it does
 
 - Emulates a PlayStation 1 memory card at the console interface.
-- Stores standard memory-card images on a microSD card.
+- Stores raw 131072-byte (`128 KiB`) `.MCR` memory-card images on a microSD card.
 - Allows multiple virtual card images to be created, selected, and deleted.
 - Provides an OLED menu controlled with two physical buttons.
-- Displays save information stored in the currently selected card image.
+- Displays directory-slot metadata from the selected image: filename, slot number, and derived block count.
 - Keeps time-critical PlayStation communication separate from slower storage and UI work.
 - Handles storage failures and SD-card removal without treating unconfirmed writes as safely persisted.
 
@@ -35,7 +35,7 @@ The project combines real-time console communication, RP2350 PIO, dual-core firm
 
 ### Real-time embedded firmware
 
-The PlayStation memory-card interface is serviced on one RP2350 core, with PIO used for the low-level serial transport. Time-sensitive code is kept independent from filesystem and UI operations so that storage activity does not interfere with console communication.
+The PlayStation memory-card interface is serviced on one RP2350 core, with PIO used for the low-level serial transport. Time-sensitive code is separated from filesystem and UI operations to reduce their interference with console communication; worst-case behavior still requires measurement on hardware.
 
 ### Dual-core architecture
 
@@ -48,11 +48,11 @@ This separation keeps latency-sensitive work predictable while allowing the devi
 
 ### Failure-aware persistence
 
-Game saves are first reflected in the in-memory card image and are then persisted to microSD by a background worker. The firmware tracks whether modified frames have actually been synchronized to storage and can retry unconfirmed changes after recoverable failures.
+Game saves are first reflected in the in-memory card image and are then persisted to microSD by a background worker. The worker confirms modified frames only after write, sync, and close succeed. Its retry bookkeeping works while RAM is preserved, but the current top-level SD recovery path reloads `CARD000.MCR`; RAM-only writes are therefore not guaranteed to survive a detected storage failure or removal.
 
 ### Custom hardware
 
-The repository includes a custom RP2350-based PCB designed in **KiCad**, together with the schematic, PCB layout, component footprints, symbols, and 3D models used by the design.
+The repository includes a custom RP2350-based PCB designed in **KiCad**, together with the schematic, PCB layout, component footprints, symbols, and 3D models used by the design. It is currently a design artifact, not a supported firmware target.
 
 ### Automated testing and CI
 
@@ -61,7 +61,7 @@ The firmware currently includes **75 host-side tests**:
 - **61 unit tests**
 - **14 integration tests**
 
-The integration suite exercises complete flows across the PS1 protocol layer, in-memory card state, and microSD persistence logic, including error and recovery scenarios.
+The integration suite exercises host-simulated flows across the PS1 protocol layer, in-memory card state, and persistence worker. It does not execute the production PIO programs, menu loop, real FatFs/SD stack, or physical dual-core hardware.
 
 GitHub Actions automatically builds the RP2350 firmware and runs the complete host-side test suite on pushes and pull requests.
 
@@ -69,17 +69,32 @@ GitHub Actions automatically builds the RP2350 firmware and runs the complete ho
 
 ```mermaid
 flowchart LR
-    PS1[PlayStation 1] --> BUS[PS1 memory-card bus<br/>PIO + Core 0]
-    BUS <--> RAM[Card image in RAM]
+    PS1[PlayStation 1]
+    SD[(microSD<br/>raw MCR images)]
+    OLED[OLED]
+    BUTTONS[Buttons]
 
-    RAM <--> STORAGE[Persistence worker<br/>Core 1]
-    STORAGE <--> SD[microSD / MCR images]
+    subgraph MCU[RP2350 / current Pico 2 W target]
+        subgraph C0[Core 0: time-critical path]
+            PIO[PIO0 RX and TX]
+            BUS[PS1 protocol engine]
+        end
+        RAM[(128 KiB card image<br/>and frame versions)]
+        subgraph C1[Core 1: cooperative loop]
+            WORKER[Persistence worker]
+            IMAGES[Image manager]
+            MENU[Menu and input]
+        end
+    end
 
-    BUTTONS[Buttons] --> UI[OLED menu<br/>Core 1]
-    UI --> STORAGE
+    PS1 <--> PIO <--> BUS <--> RAM
+    RAM --> WORKER --> SD
+    SD --> IMAGES --> RAM
+    BUTTONS --> MENU --> IMAGES
+    MENU --> OLED
 ```
 
-Detailed protocol behavior, timing considerations, concurrency design, persistence guarantees, and hardware design notes are intended to live in the project documentation rather than in this README.
+Detailed protocol behavior, timing considerations, concurrency design, persistence limits, and hardware status are documented in [`docs/`](docs/README.md).
 
 ## Repository structure
 
@@ -106,7 +121,7 @@ PS-microCard/
 | Real-time I/O | RP2350 PIO, GPIO |
 | Concurrency | RP2350 multicore |
 | Storage | microSD, FatFs |
-| User interface | SSD1306-compatible 128×64 OLED, physical buttons |
+| User interface | Current setup: DFRobot DFR0650 / SSD1306 128×64 OLED and two buttons; custom PCB: DEP128064C2-W / SH1106G, not yet ported |
 | Hardware design | KiCad |
 | Testing | Ceedling, Unity, CMock |
 | CI | GitHub Actions |
@@ -123,8 +138,10 @@ Examples of covered scenarios include:
 - multiple writes before storage synchronization,
 - filesystem write and sync failures,
 - SD-card removal during a write,
-- recovery after the SD card is reinserted,
+- worker-level replay after a simulated reconnect while the harness preserves RAM,
 - switching between virtual card images without exposing a partial image.
+
+These tests do not establish production PIO timing, physical SD behavior, real multicore scheduling, or the menu-driven recovery path. See the test documentation for the exact boundary.
 
 See [`firmware/tests/README.md`](firmware/tests/README.md) for the complete test matrix and instructions for running individual test groups.
 
@@ -139,6 +156,8 @@ The current project configuration uses:
 - Pico SDK **2.2.0**
 - ARM toolchain **14_2_Rel1**
 - Raspberry Pi Pico 2 W (`pico2_w`) as the development target
+
+> The custom PCB is not supported by this build configuration. Porting it requires a board definition and changes to the PS1 PIO pin mapping, SD/card-detect pins and polarity, buttons, and OLED driver/reset handling.
 
 ### Linux prerequisites
 
@@ -217,14 +236,7 @@ bundle install
 
 ## Documentation
 
-More detailed engineering documentation is being developed in [`docs/`](docs/). It is intended to cover topics such as:
-
-- PlayStation memory-card protocol behavior,
-- PIO transport and timing,
-- multicore synchronization,
-- storage consistency and failure recovery,
-- hardware architecture and design decisions,
-- hardware validation and test methodology.
+The [`docs/`](docs/README.md) index links the current engineering documentation for architecture, PS1 protocol behavior, persistence, concurrency, UI behavior, hardware status, and verification evidence. Known gaps and unvalidated assumptions are called out explicitly in the relevant chapters.
 
 ---
 
