@@ -138,12 +138,6 @@ These must be validated on target hardware.
 
 ## Protocol timing
 
-- [ ] Capture STATUS transaction on logic analyzer.
-- [ ] Capture READ transaction for frames 0 and 1023.
-- [ ] Capture WRITE transaction for frames 0 and 1023.
-- [ ] Measure ACK pulse width.
-- [ ] Measure DATA setup/hold relative to SCK.
-- [ ] Measure worst observed response latency/jitter.
-- [ ] Repeat while Core 1 performs SD writes and OLED updates.
+In progress...
 
 
