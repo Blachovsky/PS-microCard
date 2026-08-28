@@ -133,7 +133,7 @@ sequenceDiagram
         UI->>C0: mark logically present and release pause
     else load fails
         UI->>C0: release pause but keep card absent
-        Note over RAM: RAM may contain a partial or invalid B,<br/>but Core 0 cannot expose it
+        Note over RAM: RAM may contain a partial or invalid B, but Core 0 cannot expose it
     end
 ```
 

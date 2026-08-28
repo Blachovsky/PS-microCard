@@ -121,7 +121,7 @@ sequenceDiagram
         MENU->>MENU: validate or format erased image
         MENU->>RAM: reset all frame-version state
         MENU->>BUS: start swap-style absent window, mark logically present
-        Note over BUS: timer starts on first PS1 probe;<br/>at least two probes are ignored
+        Note over BUS: timer starts on first PS1 probe, and at least two probes are ignored
     else no usable microSD
         MENU->>BUS: keep card absent
     end
