@@ -26,6 +26,3 @@ These documents describe the behavior that is present in this repository. They d
 - The custom PCB is not a drop-in target for the current binary. It needs a board definition, a different pin configuration/PIO mapping, active-low microSD detection, OLED reset handling, and an SH1106G-compatible display path.
 - The selected image is not stored persistently. Startup and top-level storage recovery always load or create `0:/CARD000.MCR`.
 - The save worker can requeue unconfirmed frame versions while RAM is preserved, but the production menu recovery path reloads `CARD000.MCR` and resets version tracking. Pending RAM-only writes are therefore not guaranteed to survive a detected SD error, removal, or reinsertion.
-- No logic-analyzer capture, PlayStation compatibility matrix, custom-board bring-up result, or endurance result is committed to the repository.
-
-These limitations are described in detail in [persistence.md](persistence.md), [hardware.md](hardware.md), and [verification.md](verification.md).
