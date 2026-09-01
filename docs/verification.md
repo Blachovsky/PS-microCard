@@ -104,36 +104,3 @@ The second workflow uses Ruby 4.0 with the locked bundle and runs:
 ```console
 bundle exec ceedling test:all
 ```
-
-## Status matrix
-
-| Property | Current evidence | Status |
-| --- | --- | --- |
-| C build and link for Pico 2 W | local/CI build configuration | covered by build |
-| READ/WRITE/STATUS logic | host unit and pipeline tests | covered in simulation |
-| frame version and modeled persistence logic | host unit and pipeline tests | covered in simulation |
-| menu state machine and storage orchestration | no automated test | not covered |
-| production PIO execution | only assembled/linked | not executed |
-| ACK/DATA waveform and timing margin | no committed capture | pending |
-| real PlayStation compatibility | no recorded console matrix | pending |
-| real microSD removal/power loss | simulated only | pending |
-| DFR0650 display behavior | breadboard photo but no repeatable test record | informal only |
-| custom PCB firmware build | no custom board target | pending |
-| custom PCB electrical bring-up | board unassembled | pending |
-| endurance and long-duration behavior | no record | pending |
-
-## Required physical validation
-
-A future hardware report should record, at minimum:
-
-- board/console revision and power source,
-- firmware commit and build configuration,
-- CMD/SCK/CS/DATA/ACK captures with measured setup, hold, ACK delay, and pulse width,
-- READ, WRITE, STATUS, abort, startup, and image-swap traces,
-- behavior under simultaneous SD writes, OLED refreshes, and UART logging,
-- multiple microSD cards and removal at controlled points,
-- power interruption during write/sync/close,
-- regulator rails, current, temperature, and source switching,
-- pass/fail criteria and raw artifacts.
-
-Until those artifacts exist, the production transport and custom hardware should be described as unvalidated.
