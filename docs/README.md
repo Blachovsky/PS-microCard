@@ -6,11 +6,9 @@ These documents describe the behavior that is present in this repository. They d
 
 - [Architecture](architecture.md) — runtime responsibilities, startup, data flow, and module boundaries.
 - [PS1 memory-card protocol](ps1-protocol.md) — implemented commands, byte order, PIO transport, status flags, and timeouts.
-- [Persistence and recovery](persistence.md) — RAM-first writes, the actual durability boundary, image management, and current recovery limitations.
 - [Concurrency](concurrency.md) — core split, per-frame versioning, atomics, polling, and the image-switch pause handshake.
 - [User interface](user-interface.md) — current button controls, menu states, timings, limits, and startup behavior.
 - [Hardware](hardware.md) — development wiring, custom-PCB architecture, pin-map differences, and hardware-port status.
-- [Verification](verification.md) — automated evidence, test boundaries, CI, and validation that remains outstanding.
 
 ## Current project status
 
