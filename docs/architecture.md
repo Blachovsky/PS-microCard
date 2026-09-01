@@ -183,8 +183,6 @@ sequenceDiagram
     C1->>C1: confirm recorded versions
 ```
 
-The success byte returned to the console precedes storage persistence. Current top-level recovery does not guarantee that an unconfirmed RAM-only version survives an SD error; see [persistence.md](persistence.md).
-
 ## Module boundaries
 
 | Module | Responsibility |

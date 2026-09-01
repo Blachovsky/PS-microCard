@@ -206,6 +206,3 @@ an independent test executable.
 - the production `menu_task_run()` storage-removal and reload path,
 - the real FatFs, SPI microSD, OLED, buttons, or custom PCB,
 - power-loss atomicity, storage endurance, or compatibility across PlayStation models.
-
-The evidence status and the remaining physical test plan are summarized in
-[`../../docs/verification.md`](../../docs/verification.md).

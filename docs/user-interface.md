@@ -85,8 +85,6 @@ Menu actions are enabled only while `menu_storage_is_ready()` is true.
 - Worker errors also include an internal 1-second busy wait before control returns to the menu.
 - On retry/reinsertion, the current implementation reloads the original `0:/CARD000.MCR` argument rather than the previously active path.
 
-See [persistence.md](persistence.md) for the data-loss consequence of that last behavior.
-
 ## Current limits
 
 | Item | Limit |

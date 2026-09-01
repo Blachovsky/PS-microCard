@@ -23,8 +23,6 @@ The repository currently contains two hardware contexts that must not be conflat
 | Buttons | NEXT 8, SELECT 9 | left button 29, right button 19 |
 | Hardware status | breadboard prototype pictured; no committed measurement data | layout complete; unassembled and unvalidated |
 
-The DFR0650 controller/interface is documented by [DFRobot](https://wiki.dfrobot.com/dfr0650/). The custom panel controller is identified in the repository's [DEP128064C2-W datasheet](../hardware/datasheets/DEP128064C2-W.pdf).
-
 ## Current development wiring
 
 ### PS1 bus

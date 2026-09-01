@@ -156,7 +156,3 @@ The 500 µs byte deadline and 5 ms release deadline are defensive firmware value
 Host tests establish command parsing, result values, checksum behavior, frame bounds, byte-boundary abort handling, and the requested pipelined response/ACK ordering.
 
 The `hardware_xfer_*` tests execute a C bit-bang reference compiled only under `UNIT_TEST`. They do not execute `ps1_card_bus.pio`, PIO FIFOs, state-machine synchronization, IRQ masking, or actual GPIO electrical behavior.
-
-## Timing validation status
-
-The production PIO source compiles as part of the firmware build. The repository contains no logic-analyzer capture or recorded physical PlayStation timing evidence. Electrical compatibility and timing margins remain pending; see [verification.md](verification.md).
