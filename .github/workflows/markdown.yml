@@ -27,5 +27,6 @@ jobs:
             --root-dir "${{ github.workspace }}"
             --verbose
             --no-progress
+            --exclude '^https://github\.com/user-attachments/assets/f54d0bfc-f955-47ab-805d-b30cb20fdbb1$'
             './**/*.md'
           fail: true
