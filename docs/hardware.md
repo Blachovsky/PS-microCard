@@ -151,6 +151,18 @@ Before the custom board can be called supported, the repository needs at least:
 - PS1 DATA/ACK voltage and timing measurements;
 - microSD, OLED, USB, SWD, button, and power-source tests.
 
-## Validation status
+## Kicad schematic
+<p align="center"> 
+<img src="../images/kicad_schematic.png" width="1080"> 
+</p> 
+<p align="center"> 
+<i> Kicad schematic for custom PCB</i> 
+</p>
 
-No committed evidence currently establishes custom-board assembly, ERC/DRC sign-off, regulator performance, current consumption, signal integrity, PS1 compatibility, or endurance. The schematic, PCB, BOM, position data, 3D models, and component datasheets are design artifacts, not validation results.
+## Bill of materials
+<p align="center"> 
+<img src="../images/BOM.png" width="1080"> 
+</p>
+<p align="center"> 
+<i> Bill of materials for custom PCB</i> 
+</p>
