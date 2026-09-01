@@ -151,18 +151,20 @@ Before the custom board can be called supported, the repository needs at least:
 - PS1 DATA/ACK voltage and timing measurements;
 - microSD, OLED, USB, SWD, button, and power-source tests.
 
-## Kicad schematic
-<p align="center"> 
-<img src="../images/kicad_schematic.png" width="1080"> 
-</p> 
-<p align="center"> 
-<i> Kicad schematic for custom PCB</i> 
+## Custom PCB schematic (KiCad)
+
+<p align="center">
+<img src="../images/kicad_schematic.png" alt="KiCad schematic of the custom RP2350 PCB" width="1080">
+</p>
+<p align="center">
+<i>Component-level schematic of the unassembled custom RP2350 PCB, including the MCU, storage, display, controls, PS1 interface, USB, and power sections.</i>
 </p>
 
-## Bill of materials
-<p align="center"> 
-<img src="../images/BOM.png" width="1080"> 
+## Custom PCB bill of materials (BOM)
+
+<p align="center">
+<img src="../images/BOM.png" alt="Bill of materials for the custom RP2350 PCB" width="1080">
 </p>
-<p align="center"> 
-<i> Bill of materials for custom PCB</i> 
+<p align="center">
+<i>Design-stage BOM for the unassembled custom RP2350 PCB, grouped by reference designator with values, quantities, footprints, manufacturers, and manufacturer part numbers.</i>
 </p>
