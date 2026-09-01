@@ -18,6 +18,7 @@ The project combines real-time console communication, RP2350 PIO, dual-core firm
 <p align="center"> 
 <i> Custom PCB designed in KiCad. Hardware prototype not yet assembled.</i> 
 </p>
+
 [Watch the breadboard prototype demo](https://github.com/user-attachments/assets/f54d0bfc-f955-47ab-805d-b30cb20fdbb1)
 
 ## What it does
