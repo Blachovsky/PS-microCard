@@ -100,15 +100,6 @@ A file whose complete 128 KiB contents are all `0x00` or all `0xFF` is treated a
 
 The catalog scan initially filters by extension and exact size. Full header/directory validation happens only when an image is loaded, so a size-correct but malformed image may appear in the browser and then fail activation.
 
-## Creation, catalog, and save metadata
-
-- Startup loads or creates `0:/CARD000.MCR`.
-- New images use the first free name from `CARD000.MCR` through `CARD999.MCR`.
-- The on-device image list holds at most 64 entries and sorts the returned names lexicographically.
-- Stored image-name buffers hold at most 12 characters plus the terminator.
-- The save browser reads 15 directory entries and displays only first-block entries with state `0x51`.
-- Save information consists of the directory filename (non-printable bytes become `?`), slot, and a block count derived from the stored size. Game title, icon, region, and linked-block integrity are not decoded.
-
 ## Image activation
 
 ```mermaid
@@ -146,15 +137,3 @@ Deleting a non-active image pauses Core 0, flushes the active image, deletes the
 Deleting the active image first searches the visible catalog for another image. If none exists, it creates a new blank image. It then activates that fallback through the normal pause/load path before unlinking the old file.
 
 A size-correct but format-invalid fallback can cause activation, and therefore deletion, to fail.
-
-## Power-loss and media guarantees
-
-The repository does not contain evidence for:
-
-- atomicity of an SD-sector update during sudden power loss,
-- behavior of a real card's volatile cache,
-- filesystem recovery after interrupted metadata updates,
-- long-duration wear or endurance,
-- preservation of unconfirmed RAM data through the current top-level recovery path.
-
-Accordingly, the implementation should be described as asynchronous and conservatively tracked, not power-loss-safe.
