@@ -1,5 +1,6 @@
-[![Firmware build](https://github.com/Blachovsky/PS-microCard/actions/workflows/build.yml/badge.svg)](https://github.com/Blachovsky/PS-microCard/actions/workflows/build.yml)
-[![Firmware tests](https://github.com/Blachovsky/PS-microCard/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Blachovsky/PS-microCard/actions/workflows/tests.yml)
+[![Firmware build](https://github.com/Blachovsky/PS-microCard/actions/workflows/build.yml/badge.svg)](https://github.com/Blachovsky/PS-microCard/actions/workflows/build.yml)<br>
+[![Firmware tests](https://github.com/Blachovsky/PS-microCard/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Blachovsky/PS-microCard/actions/workflows/tests.yml)<br>
+[![Markdown links](https://github.com/Blachovsky/PS-microCard/actions/workflows/markdown.yml/badge.svg)](https://github.com/Blachovsky/PS-microCard/actions/workflows/markdown.yml)
 
 # PS-microCard
 
