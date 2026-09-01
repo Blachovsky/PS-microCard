@@ -53,35 +53,6 @@ Open, seek, short-write/write, sync, close, and snapshot-fetch failures call the
 
 Physical removal is handled similarly by `micro_sd_handle_card_unavailable()`, although that function resets the worker state directly.
 
-## Top-level recovery limitation
-
-The requeue in step 3 is useful only while the RAM image and version arrays are retained. The production menu does not currently complete recovery that way.
-
-```mermaid
-flowchart TB
-    ERR["worker error or detected removal"]
-    ABSENT["logical PS1 card absent"]
-    ROLLBACK["observed versions rolled back"]
-    MENU["menu storage state becomes not ready"]
-    RETRY["retry after 1 second<br/>or debounced reinsertion"]
-    DEFAULT["load or create<br/>0:/CARD000.MCR"]
-    REPLACE["overwrite card_image from file"]
-    RESET["reset frame, observed,<br/>and confirmed versions"]
-    READY["start absent window<br/>then expose card"]
-
-    ERR --> ABSENT --> ROLLBACK --> MENU --> RETRY --> DEFAULT --> REPLACE --> RESET --> READY
-```
-
-Consequences of the current code:
-
-- unconfirmed RAM-only writes can be lost after a detected SD error/removal because RAM is reloaded from the file;
-- if another image was active, recovery switches back to `CARD000.MCR`;
-- the selected-image choice is not persisted;
-- writes can be accepted in the short interval between physical removal and Core 1 marking the logical card absent, but those writes are also subject to the reload behavior;
-- after logical absence begins, Core 0 ignores further transactions.
-
-The worker and pipeline tests that demonstrate retry after reconnection explicitly preserve RAM and reconnect the worker directly. They do not execute `menu_task_run()` or its `reload_inserted_card(initial_image_path)` path. Documentation and test names must not turn that harness behavior into a production-level guarantee.
-
 ## Image format
 
 The project supports raw PlayStation card dumps with these properties:
