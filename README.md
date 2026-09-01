@@ -236,8 +236,8 @@ bundle install
 
 ## Documentation
 
-The [`docs/`](docs/README.md) index links the current engineering documentation for architecture, PS1 protocol behavior, persistence, concurrency, UI behavior, hardware status, and verification evidence. Known gaps and unvalidated assumptions are called out explicitly in the relevant chapters.
+The [`docs/`](docs/README.md) index links the current engineering documentation for architecture, PS1 protocol behavior, concurrency, UI behavior, hardware status.
 
 ---
 
-This project is primarily an exploration of **embedded systems engineering, real-time communication, robust persistent storage, firmware testing, and custom hardware design** on the RP2350 platform.
+This project is primarily an exploration of **embedded systems engineering, real-time communication, storage, firmware testing, and custom hardware design** on the RP2350 platform.
