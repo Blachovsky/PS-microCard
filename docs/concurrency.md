@@ -59,12 +59,6 @@ sequenceDiagram
 
 If four attempts cannot obtain a stable copy, that candidate is skipped for the current scan. `ps1emu_take_changed_frame()` continues scanning other frames and a later worker poll can try again.
 
-## Discovery and polling
-
-`ps1emu_take_changed_frame()` scans from a rotating cursor and returns at most one changed frame per call. `micro_sd_save_worker_poll()` calls it once, so normal operation writes at most one frame per approximately 10 ms menu iteration. `micro_sd_save_worker_flush()` loops until no changed frame remains.
-
-`ps1emu_commit_frame()` calls `__sev()`, but the current Core 1 code contains no `__wfe()`. The event instruction therefore does not currently provide the wake-up mechanism described by older comments; polling does.
-
 ## Observed and confirmed versions
 
 Core 1 maintains:
