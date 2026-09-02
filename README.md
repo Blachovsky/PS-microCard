@@ -243,7 +243,7 @@ The [`docs/`](docs/README.md) index links the current engineering documentation 
 The PS-microCard project uses separate licenses for software and hardware.
 
 * **Firmware and software:** see [`LICENSE`](license/LICENSE.md).
-* **Hardware design:** licensed under the CERN Open Hardware Licence Version 2 – Permissive (`CERN-OHL-S-2.0`). See [`LICENSE-HARDWARE`](license/LICENSE-HARDWARE.md).
+* **Hardware design:** licensed under the CERN Open Hardware Licence Version 2 – strongly reciprocal (`CERN-OHL-S-2.0`). See [`LICENSE-HARDWARE`](license/LICENSE-HARDWARE.md).
 
 Third-party components remain subject to their respective licenses. See
 [`THIRD_PARTY_NOTICES.md`](license/THIRD_PARTY_NOTICES.md) for details.
