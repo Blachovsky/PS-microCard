@@ -103,11 +103,18 @@ This payload is not generated from the mutable power-on/write-error byte.
 
 ```mermaid
 flowchart LR
-    CMD["CMD, CS, SCK"] --> RX["PIO0 RX state machine<br/>LSB-first sampling"]
+    CMD[CMD] --> RX["PIO0 RX state machine<br/>LSB-first sampling"]
+    CS[CS] --> RX
+    SCK[SCK] --> RX
+    CS --> TX["PIO0 TX state machine"]
+    SCK --> TX
     RX --> FIFO_RX["RX FIFO"]
     FIFO_RX --> CPU["Core 0 protocol"]
+    CS -->|"edge and abort polling"| CPU
     CPU --> FIFO_TX["TX FIFO<br/>inverted response byte"]
-    FIFO_TX --> TX["PIO0 TX state machine"]
+    FIFO_TX --> TX
+    CPU -. "configure, stop, clear, re-arm" .-> RX
+    CPU -. "configure, stop, clear, re-arm" .-> TX
     TX --> DATA["DATA<br/>open-drain"]
     TX --> ACK["ACK<br/>open-drain"]
 ```

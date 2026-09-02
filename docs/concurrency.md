@@ -93,22 +93,35 @@ sequenceDiagram
     participant PIO as PIO0 state machines
 
     C1->>FLAG: pause_requested = true
-    loop until acknowledged
-        C1->>C1: busy_wait_us_32(50)
+    par Core 1 waits for acknowledgement
+        loop until pause_active is true
+            C1->>FLAG: load pause_active (acquire)
+            opt still false
+                C1->>C1: busy_wait_us_32(50)
+            end
+        end
+    and Core 0 acknowledges between transactions
+        C0->>PIO: release DATA/ACK and disable/clear state machines
+        C0->>FLAG: pause_active = true
     end
-    C0->>PIO: release DATA/ACK and disable/clear state machines
-    C0->>FLAG: pause_active = true
-    C0->>C0: spin while pause_requested
     FLAG-->>C1: pause_active observed
+    Note over C0: spinning while pause_requested is true
 
     Note over C1: flush and whole-image operation
 
     C1->>FLAG: pause_requested = false
-    C0->>PIO: wait up to 5 ms for CS high, then re-arm
-    C0->>FLAG: pause_active = false
-    loop until released
-        C1->>C1: busy_wait_us_32(50)
+    par Core 1 waits for release
+        loop until pause_active is false
+            C1->>FLAG: load pause_active (acquire)
+            opt still true
+                C1->>C1: busy_wait_us_32(50)
+            end
+        end
+    and Core 0 resumes bus service
+        C0->>PIO: wait up to 5 ms for CS high, then re-arm
+        C0->>FLAG: pause_active = false
     end
+    FLAG-->>C1: pause release observed
 ```
 
 A request made during a transaction is acknowledged only after Core 0 leaves that transaction path. This handshake has no timeout on the Core 1 side; a failed or stopped Core 0 would block the requester.
