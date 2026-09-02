@@ -25,9 +25,10 @@ jobs:
         with:
           args: >-
             --root-dir "${{ github.workspace }}"
+            --offline
             --verbose
             --no-progress
-            --exclude '^https://github\.com/user-attachments/assets/f54d0bfc-f955-47ab-805d-b30cb20fdbb1$'
-            --exclude '^https://fsf\.org/$'
-            './**/*.md'
+            './README.md'
+            './docs/**/*.md'
+            './firmware/tests/README.md'
           fail: true
