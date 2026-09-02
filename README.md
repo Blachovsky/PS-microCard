@@ -238,6 +238,16 @@ bundle install
 
 The [`docs/`](docs/README.md) index links the current engineering documentation for architecture, PS1 protocol behavior, concurrency, UI behavior, hardware status.
 
+## License
+
+The PS-microCard project uses separate licenses for software and hardware.
+
+* **Firmware and software:** see [`LICENSE`](license/LICENSE).
+* **Hardware design:** licensed under the CERN Open Hardware Licence Version 2 – Permissive (`CERN-OHL-P-2.0`). See [`LICENSE-HARDWARE`](license/LICENSE-HARDWARE).
+
+Third-party components remain subject to their respective licenses. See
+[`THIRD_PARTY_NOTICES.md`](license/THIRD_PARTY_NOTICES.md) for details.
+
 ---
 
 This project is primarily an exploration of **embedded systems engineering, real-time communication, storage, firmware testing, and custom hardware design** on the RP2350 platform.
